@@ -1,16 +1,8 @@
 import type { Lesson, Progress, SrsCard } from "../data/db";
 import { db } from "../data/db";
+import { getToken } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
-const TOKEN_KEY = "lingualoop:jwt";
-
-function getToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
 
 function authHeaders(token: string): Record<string, string> {
   return {

@@ -3,35 +3,39 @@ import { BrowserRouter } from "react-router-dom";
 import { AppRoutes } from "./routes";
 import { useSettingsStore } from "../store/settingsStore";
 import { useProgressStore } from "../store/progressStore";
+import { useAuthStore } from "../store/authStore";
 import { runSeed } from "../data/seed";
 import { pullFromServer } from "../lib/sync";
 
 export function App() {
   const loadSettings = useSettingsStore((s) => s.load);
   const loadProgress = useProgressStore((s) => s.load);
+  const loadFromToken = useAuthStore((s) => s.loadFromToken);
   const [booted, setBooted] = useState(false);
 
   useEffect(() => {
     (async () => {
-      // Order matters: seed first so the home screen has lessons to show.
+      // 1. Restore session first — guards downstream routing decisions.
+      await loadFromToken();
+      // 2. Seed lessons + load local stores in parallel.
       await runSeed();
       await Promise.all([loadSettings(), loadProgress()]);
-      // Pull authoritative server state (no-op without JWT / offline).
+      // 3. Pull authoritative server state (no-op if no JWT / offline).
       await pullFromServer();
-      // Reload local stores in case server state replaced them.
+      // 4. Re-load local stores in case server state replaced them.
       await Promise.all([loadSettings(), loadProgress()]);
       setBooted(true);
     })().catch((err) => {
       console.error("[boot]", err);
-      setBooted(true); // still render so user sees an error rather than blank
+      setBooted(true);
     });
-  }, [loadSettings, loadProgress]);
+  }, [loadSettings, loadProgress, loadFromToken]);
 
   if (!booted) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-surface">
         <div
-          className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-500"
+          className="h-10 w-10 animate-spin rounded-full border-[3px] border-surface-2 border-t-gold"
           aria-label="Loading"
         />
       </div>

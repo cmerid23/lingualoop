@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Volume2 } from "lucide-react";
+import { Volume2, Zap } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { LANGUAGES, scriptClass } from "../data/languages";
 import { db, pairKey } from "../data/db";
 import { useSettingsStore } from "../store/settingsStore";
 import { useProgressStore } from "../store/progressStore";
+import { useAuthStore } from "../store/authStore";
 import { useSpeak } from "../lib/useSpeak";
 
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
+// 4 lessons × ~8 min/lesson = the proxy threshold for "you've hit today's
+// free limit". Replace once we track per-day lesson counts directly.
+const FREE_LESSON_PROXY_MINUTES = 4 * 8;
+
 export function Home() {
   const settings = useSettingsStore((s) => s.settings);
   const progress = useProgressStore((s) => s.progress);
+  const user = useAuthStore((s) => s.user);
   const { speak, speaking } = useSpeak();
   const navigate = useNavigate();
   const [lessonTitle, setLessonTitle] = useState<string | null>(null);
@@ -106,6 +112,35 @@ export function Home() {
             </div>
           </div>
         </div>
+
+        {/* ── Free-plan upgrade nudge ── */}
+        {user?.subscriptionPlan === "free" &&
+          progress.minutesToday > FREE_LESSON_PROXY_MINUTES && (
+            <button
+              onClick={() => navigate("/pricing")}
+              className="group relative flex items-center justify-between gap-4 overflow-hidden rounded-2xl border border-gold/30 bg-gold-pale px-6 py-5 text-left shadow-soft transition hover:-translate-y-0.5"
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink"
+                  style={{ background: "linear-gradient(135deg, var(--gold), var(--gold-light))" }}
+                >
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-display text-base font-semibold text-ink">
+                    You've hit today's free limit — upgrade to keep going 🚀
+                  </p>
+                  <p className="mt-1 text-xs font-light text-ink-3">
+                    Pro unlocks unlimited lessons, the AI tutor, and pronunciation scoring.
+                  </p>
+                </div>
+              </div>
+              <span className="hidden shrink-0 text-sm font-semibold text-gold sm:inline">
+                Upgrade →
+              </span>
+            </button>
+          )}
 
         {/* ── Stats row: progress ring | level | streak ── */}
         <div className="grid gap-5 md:grid-cols-3">
