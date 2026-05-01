@@ -3,21 +3,21 @@ import { Check, X, Sparkles } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { useAuthStore } from "../store/authStore";
 
-type Plan = "free" | "pro" | "premium";
+export type Plan = "free" | "pro" | "premium";
 type Cycle = "monthly" | "annual";
 
-const PRICES: Record<Plan, { monthly: number; annual: number }> = {
+export const PRICES: Record<Plan, { monthly: number; annual: number }> = {
   free: { monthly: 0, annual: 0 },
   pro: { monthly: 9.99, annual: 95.9 },
   premium: { monthly: 19.99, annual: 191.9 },
 };
 
-interface FeatureRow {
+export interface FeatureRow {
   text: string;
   included: boolean;
 }
 
-const FEATURES: Record<Plan, FeatureRow[]> = {
+export const PLAN_FEATURES: Record<Plan, FeatureRow[]> = {
   free: [
     { text: "1 language pair", included: true },
     { text: "5 lessons per day", included: true },
@@ -125,7 +125,7 @@ export function PricingPage() {
             tagline="Get started, no card needed."
             price={priceLabel("free")}
             priceSub="forever"
-            features={FEATURES.free}
+            features={PLAN_FEATURES.free}
             buttonLabel={buttonLabel("free")}
             onClick={() => onUpgrade("free")}
           />
@@ -140,7 +140,7 @@ export function PricingPage() {
             badge="Most popular"
             price={priceLabel("pro")}
             priceSub={priceSub("pro")}
-            features={FEATURES.pro}
+            features={PLAN_FEATURES.pro}
             buttonLabel={buttonLabel("pro")}
             onClick={() => onUpgrade("pro")}
           />
@@ -154,7 +154,7 @@ export function PricingPage() {
             tagline="The full experience."
             price={priceLabel("premium")}
             priceSub={priceSub("premium")}
-            features={FEATURES.premium}
+            features={PLAN_FEATURES.premium}
             buttonLabel={buttonLabel("premium")}
             onClick={() => onUpgrade("premium")}
           />
@@ -191,7 +191,7 @@ function CycleButton({
 }
 
 // ─── Plan card ────────────────────────────────────────────────────────────
-function PlanCard({
+export function PlanCard({
   plan,
   current,
   tone,

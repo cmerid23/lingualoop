@@ -1,52 +1,39 @@
-import { useEffect } from "react";
-import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { LandingPage } from "./LandingPage";
 import { Onboarding } from "./Onboarding";
 import { Home } from "./Home";
 import { SettingsPage } from "./SettingsPage";
 import { LessonRunner } from "./LessonRunner";
 import { LoginPage } from "./LoginPage";
+import { RegisterPage } from "./RegisterPage";
 import { PricingPage } from "./PricingPage";
+import { ReviewSession } from "./ReviewSession";
 import { AdminDashboard } from "./admin/AdminDashboard";
 import { AdminLogin } from "./admin/AdminLogin";
 import { useSettingsStore } from "../store/settingsStore";
 import { useAuthStore } from "../store/authStore";
 
-function GatedHome() {
+// ─── Guards ───────────────────────────────────────────────────────────────
+
+/** Redirect logged-in users away from public auth pages. */
+function PublicOnly({ children }: { children: React.ReactElement }) {
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
-  const settings = useSettingsStore((s) => s.settings);
-  const settingsLoading = useSettingsStore((s) => s.loading);
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-
-  useEffect(() => {
-    if (authLoading || settingsLoading) return;
-    if (!user) {
-      navigate("/login", { replace: true });
-      return;
-    }
-    if (!settings && pathname !== "/onboarding") {
-      navigate("/onboarding", { replace: true });
-    }
-  }, [authLoading, settingsLoading, user, settings, pathname, navigate]);
-
-  if (authLoading || settingsLoading) return <FullScreenLoader />;
-  if (!user) return null;
-  if (!settings) return null;
-  return <Home />;
+  if (authLoading) return <FullScreenLoader />;
+  if (user) return <Navigate to="/home" replace />;
+  return children;
 }
 
-function GatedSettings() {
+function RequireAuth({ children }: { children: React.ReactElement }) {
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
-  const settings = useSettingsStore((s) => s.settings);
   if (authLoading) return <FullScreenLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (!settings) return <Navigate to="/onboarding" replace />;
-  return <SettingsPage />;
+  return children;
 }
 
-function GatedLesson() {
+/** Auth + onboarding required. */
+function RequireOnboarded({ children }: { children: React.ReactElement }) {
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
   const settings = useSettingsStore((s) => s.settings);
@@ -54,26 +41,10 @@ function GatedLesson() {
   if (authLoading || settingsLoading) return <FullScreenLoader />;
   if (!user) return <Navigate to="/login" replace />;
   if (!settings) return <Navigate to="/onboarding" replace />;
-  return <LessonRunner />;
+  return children;
 }
 
-function GatedOnboarding() {
-  const user = useAuthStore((s) => s.user);
-  const authLoading = useAuthStore((s) => s.loading);
-  if (authLoading) return <FullScreenLoader />;
-  if (!user) return <Navigate to="/login" replace />;
-  return <Onboarding />;
-}
-
-function GatedPricing() {
-  const user = useAuthStore((s) => s.user);
-  const authLoading = useAuthStore((s) => s.loading);
-  if (authLoading) return <FullScreenLoader />;
-  if (!user) return <Navigate to="/login" replace />;
-  return <PricingPage />;
-}
-
-function GatedAdmin() {
+function RequireAdmin({ children }: { children: React.ReactElement }) {
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
   if (authLoading) return <FullScreenLoader />;
@@ -89,20 +60,87 @@ function GatedAdmin() {
         </div>
       </div>
     );
-  return <AdminDashboard />;
+  return children;
 }
 
+// ─── Routes ───────────────────────────────────────────────────────────────
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      {/* Public */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+
+      {/* Auth pages — bounce logged-in users to /home */}
+      <Route
+        path="/login"
+        element={
+          <PublicOnly>
+            <LoginPage />
+          </PublicOnly>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicOnly>
+            <RegisterPage />
+          </PublicOnly>
+        }
+      />
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/onboarding" element={<GatedOnboarding />} />
-      <Route path="/" element={<GatedHome />} />
-      <Route path="/settings" element={<GatedSettings />} />
-      <Route path="/lesson/:unit/:lessonNum" element={<GatedLesson />} />
-      <Route path="/pricing" element={<GatedPricing />} />
-      <Route path="/admin" element={<GatedAdmin />} />
+
+      {/* Authenticated */}
+      <Route
+        path="/onboarding"
+        element={
+          <RequireAuth>
+            <Onboarding />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/home"
+        element={
+          <RequireOnboarded>
+            <Home />
+          </RequireOnboarded>
+        }
+      />
+      <Route
+        path="/lesson/:unit/:lessonNum"
+        element={
+          <RequireOnboarded>
+            <LessonRunner />
+          </RequireOnboarded>
+        }
+      />
+      <Route
+        path="/review"
+        element={
+          <RequireOnboarded>
+            <ReviewSession />
+          </RequireOnboarded>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <RequireOnboarded>
+            <SettingsPage />
+          </RequireOnboarded>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <RequireAdmin>
+            <AdminDashboard />
+          </RequireAdmin>
+        }
+      />
+
+      {/* Wildcard → marketing landing */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

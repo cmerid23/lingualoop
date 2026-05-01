@@ -53,7 +53,7 @@ export function Onboarding() {
       dailyMinutes: minutes,
       cefrLevel: "A1",
     });
-    navigate("/", { replace: true });
+    navigate("/home", { replace: true });
   }
 
   function next() {

@@ -1,10 +1,17 @@
 import { useEffect, useState, useCallback } from "react";
-import { Volume2 } from "lucide-react";
+import { Volume2, Type } from "lucide-react";
 import type { VocabItem } from "../../data/db";
 import type { LangCode } from "../../data/languages";
 import { scriptClass } from "../../data/languages";
 import { SketchImage } from "./SketchImage";
 import { useSpeak } from "../../lib/useSpeak";
+import { checkWrittenAnswer } from "../../lib/grading";
+
+const PLACEHOLDERS: Partial<Record<LangCode, string>> = {
+  am: "e.g. selam or ሰላም",
+  ti: "e.g. selam or ሰላም",
+  ar: "e.g. marhaba or مرحبا",
+};
 
 interface SoundFirstProps {
   item: VocabItem;
@@ -34,12 +41,18 @@ export function SoundFirstRecognition({
 
   const correct = item.src;
 
+  // Text fallback state
+  const [typed, setTyped] = useState("");
+  const [typedResult, setTypedResult] = useState<"correct" | "wrong" | null>(null);
+
   useEffect(() => {
     const others = allItems.filter((v) => v.tgt !== item.tgt);
     const distractors = shuffle(others).slice(0, 3);
     setOptions(shuffle([item, ...distractors]));
     setSelected(null);
     setRevealed(false);
+    setTyped("");
+    setTypedResult(null);
     speak(item.tgt, targetLang);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.tgt]);
@@ -54,6 +67,18 @@ export function SoundFirstRecognition({
     setRevealed(true);
     setTimeout(() => onResult(src === correct), 1200);
   }
+
+  function checkTyped() {
+    if (revealed || typedResult !== null) return;
+    const ok = checkWrittenAnswer(typed, item, targetLang);
+    setTypedResult(ok ? "correct" : "wrong");
+    setRevealed(true);
+    setTimeout(() => onResult(ok), 1200);
+  }
+
+  const inputScriptCls =
+    targetLang === "am" || targetLang === "ti" ? "font-geez" : "";
+  const placeholder = PLACEHOLDERS[targetLang] ?? "Type the word…";
 
   function choiceClass(src: string): string {
     if (!revealed) return "border-surface-2 hover:-translate-y-0.5 hover:border-ink-3";
@@ -117,6 +142,40 @@ export function SoundFirstRecognition({
             <span className="text-sm font-semibold text-ink">{opt.src}</span>
           </button>
         ))}
+      </div>
+
+      {/* Text-input fallback — works whether or not the user clicks a tile */}
+      <div className="flex w-full flex-col gap-2">
+        <div className="flex items-center justify-center gap-2 text-ink-3">
+          <span className="h-px flex-1 bg-surface-3" />
+          <span className="text-[11px] font-semibold uppercase tracking-[2px] opacity-60">
+            Or type your answer
+          </span>
+          <span className="h-px flex-1 bg-surface-3" />
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            disabled={revealed}
+            placeholder={placeholder}
+            className={`flex-1 rounded-xl border border-surface-3 bg-surface px-4 py-3 text-[15px] text-ink outline-none transition focus:border-ink-3 focus:bg-white disabled:opacity-70 ${inputScriptCls}`}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                checkTyped();
+              }
+            }}
+          />
+          <button
+            onClick={checkTyped}
+            disabled={revealed || typed.trim().length === 0}
+            className="btn-teal"
+          >
+            <Type className="mr-1 h-4 w-4" /> Check
+          </button>
+        </div>
       </div>
 
       {revealed && options.length < 2 && (

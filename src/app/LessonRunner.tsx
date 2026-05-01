@@ -214,7 +214,7 @@ export function LessonRunner() {
           <p className="font-light text-ink-3">
             Lesson not found. It may not have been generated yet.
           </p>
-          <Button onClick={() => navigate("/")}>Back to home</Button>
+          <Button onClick={() => navigate("/home")}>Back to home</Button>
         </div>
       </AppShell>
     );
@@ -225,7 +225,7 @@ export function LessonRunner() {
       xpEarned={xpEarned}
       total={totalSteps}
       correct={correctCount}
-      onHome={() => navigate("/")}
+      onHome={() => navigate("/home")}
     />;
   }
 
@@ -243,7 +243,7 @@ export function LessonRunner() {
       {/* Lesson topbar */}
       <div className="flex items-center gap-4 border-b border-surface-3 bg-surface px-6 py-5 lg:px-9">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/home")}
           aria-label="Exit lesson"
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-3 bg-white text-ink-3 transition hover:bg-surface-2"
         >

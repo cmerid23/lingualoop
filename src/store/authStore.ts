@@ -23,13 +23,19 @@ interface AuthState {
   logout: () => void;
 
   /**
+   * True iff the user has both nativeLang and targetLang set on their
+   * server profile — i.e. they've completed onboarding.
+   */
+  isOnboarded: () => boolean;
+
+  /**
    * On app boot. If a token exists, calls /api/auth/me to restore the user.
    * On 401 / failure, the token is cleared and `user` stays null.
    */
   loadFromToken: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: getToken(),
   loading: true,
@@ -47,10 +53,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout() {
     clearToken();
     set({ token: null, user: null, loading: false });
-    // Hard navigation so any in-memory state from the previous session is dropped.
+    // Hard nav back to the marketing page so any in-memory state is dropped.
     if (typeof window !== "undefined") {
-      window.location.href = "/login";
+      window.location.href = "/";
     }
+  },
+
+  isOnboarded() {
+    const u = get().user;
+    return Boolean(u?.nativeLang && u?.targetLang);
   },
 
   async loadFromToken() {

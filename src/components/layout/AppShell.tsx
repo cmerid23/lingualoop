@@ -65,11 +65,12 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
   const user = useAuthStore((s) => s.user);
   const { pathname } = useLocation();
 
-  const isHome = pathname === "/";
+  const isHome = pathname === "/home";
   const isLesson = pathname.startsWith("/lesson");
   const isSettings = pathname.startsWith("/settings");
   const isPricing = pathname.startsWith("/pricing");
   const isAdmin = pathname.startsWith("/admin");
+  const isReview = pathname.startsWith("/review");
 
   const plan = user?.subscriptionPlan ?? "free";
   const isAdminUser = user?.role === "admin";
@@ -81,7 +82,7 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
       {/* ── SIDEBAR ── */}
       <nav className="hidden lg:flex w-[88px] flex-col items-center gap-2 bg-ink py-7 shadow-lift">
         <Link
-          to="/"
+          to="/home"
           aria-label="LinguaLoop home"
           className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl font-display text-[22px] font-bold tracking-tighter text-ink"
           style={{ background: "linear-gradient(135deg, var(--gold), var(--gold-light))" }}
@@ -89,10 +90,10 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
           LL
         </Link>
 
-        <NavLink to="/" active={isHome} label="Home" icon={<HomeIcon className="h-[22px] w-[22px]" />} />
-        <NavLink to="/" active={isLesson} label="Lessons" icon={<BookOpen className="h-[22px] w-[22px]" />} />
+        <NavLink to="/home" active={isHome} label="Home" icon={<HomeIcon className="h-[22px] w-[22px]" />} />
+        <NavLink to="/home" active={isLesson} label="Lessons" icon={<BookOpen className="h-[22px] w-[22px]" />} />
         <NavLink to="/settings" active={isSettings} label="Languages" icon={<Globe className="h-[22px] w-[22px]" />} />
-        <NavLink to="/" active={false} label="Review" icon={<Repeat className="h-[22px] w-[22px]" />} />
+        <NavLink to="/review" active={isReview} label="Review" icon={<Repeat className="h-[22px] w-[22px]" />} />
 
         {isAdminUser && (
           <NavLink
@@ -126,7 +127,7 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
           <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-surface-3 bg-surface/95 px-6 py-5 backdrop-blur-md lg:px-9">
             <div className="flex items-center gap-3 lg:hidden">
               <Link
-                to="/"
+                to="/home"
                 aria-label="LinguaLoop home"
                 className="flex h-9 w-9 items-center justify-center rounded-xl font-display text-base font-bold tracking-tighter text-ink"
                 style={{ background: "linear-gradient(135deg, var(--gold), var(--gold-light))" }}
