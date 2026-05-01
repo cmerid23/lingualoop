@@ -2,10 +2,9 @@ import "dotenv/config";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import express, { type NextFunction, type Request, type Response } from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
 import Anthropic from "@anthropic-ai/sdk";
-import pg from "pg";
 import {
   type AuthedRequest,
   generateOTP,
@@ -15,6 +14,13 @@ import {
   requireAuth,
   verifyPassword,
 } from "./auth.js";
+import { pool, requireDb } from "./db.js";
+import {
+  checkLimit,
+  midnightUtcTomorrow,
+  todayUtcDate,
+} from "./usageMiddleware.js";
+import { getLimit } from "./limits.js";
 
 // ESM doesn't have __dirname natively — shim it so static-asset paths read naturally.
 const __filename = fileURLToPath(import.meta.url);
@@ -26,7 +32,6 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT) || 3001;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!ANTHROPIC_API_KEY) {
@@ -37,12 +42,6 @@ if (!JWT_SECRET) {
 }
 
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-
-const { Pool } = pg;
-const pool = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL }) : null;
-if (!pool) {
-  console.warn("DATABASE_URL is not set — auth, sync, and lesson persistence are disabled.");
-}
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -127,14 +126,6 @@ function buildTutorSystemPrompt(
 function extractText(response: Anthropic.Message): string {
   const block = response.content.find((b) => b.type === "text");
   return block && block.type === "text" ? block.text : "";
-}
-
-function requireDb(_req: Request, res: Response, next: NextFunction) {
-  if (!pool) {
-    res.status(503).json({ error: "Database unavailable" });
-    return;
-  }
-  next();
 }
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -228,7 +219,7 @@ app.get("/api/health", (_req, res) => {
 // ---------------------------------------------------------------------------
 // Tutor + lesson generation (Anthropic)
 // ---------------------------------------------------------------------------
-app.post("/api/tutor", async (req: Request, res: Response) => {
+app.post("/api/tutor", requireDb, requireAuth, checkLimit("tutorMessages"), async (req: Request, res: Response) => {
   try {
     const { messages, nativeLang, targetLang, level, lessonTitle } = req.body ?? {};
     if (!Array.isArray(messages) || !nativeLang || !targetLang || !level || !lessonTitle) {
@@ -247,7 +238,7 @@ app.post("/api/tutor", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/api/generate-lesson", async (req: Request, res: Response) => {
+app.post("/api/generate-lesson", requireDb, requireAuth, checkLimit("lessonsGenerated"), async (req: Request, res: Response) => {
   try {
     const { pair, unit, lessonNum, level, nativeLang, targetLang } = req.body ?? {};
     if (!pair || unit == null || lessonNum == null || !level || !nativeLang || !targetLang) {
@@ -309,6 +300,57 @@ app.post("/api/generate-lesson", async (req: Request, res: Response) => {
     res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Usage (today's per-user counts + plan limits)
+// ---------------------------------------------------------------------------
+app.get(
+  "/api/usage/today",
+  requireDb,
+  requireAuth,
+  async (req: AuthedRequest, res: Response) => {
+    try {
+      const today = todayUtcDate();
+      const lookup = await pool!.query<{
+        plan: string;
+        tutor: string | number;
+        lessons: string | number;
+      }>(
+        `SELECT u.subscription_plan AS plan,
+                COALESCE(d.tutor_messages, 0) AS tutor,
+                COALESCE(d.lessons_generated, 0) AS lessons
+         FROM users u
+         LEFT JOIN daily_usage d ON d.user_id = u.id AND d.date = $2
+         WHERE u.id = $1`,
+        [req.user!.id, today],
+      );
+      const row = lookup.rows[0];
+      if (!row) return res.status(404).json({ error: "User not found" });
+
+      const plan = row.plan;
+      const tutorUsed = Number(row.tutor);
+      const lessonsUsed = Number(row.lessons);
+      const tutorLimit = getLimit(plan, "tutorMessagesPerDay");
+      const lessonsLimit = getLimit(plan, "lessonsGeneratedPerDay");
+
+      const pack = (used: number, limit: number) =>
+        limit === -1
+          ? { used, limit: -1, remaining: -1 }
+          : { used, limit, remaining: Math.max(0, limit - used) };
+
+      res.json({
+        date: today,
+        plan,
+        tutor: pack(tutorUsed, tutorLimit),
+        lessons: pack(lessonsUsed, lessonsLimit),
+        resetsAt: midnightUtcTomorrow(),
+      });
+    } catch (err) {
+      console.error("/api/usage/today failed", err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Auth

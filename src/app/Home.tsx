@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Volume2, Zap } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
+import { UsageBar } from "../components/ui/UsageBar";
 import { LANGUAGES, scriptClass } from "../data/languages";
 import { db, pairKey } from "../data/db";
 import { useSettingsStore } from "../store/settingsStore";
 import { useProgressStore } from "../store/progressStore";
 import { useAuthStore } from "../store/authStore";
 import { useSpeak } from "../lib/useSpeak";
+import { fetchUsageToday, type UsageToday } from "../lib/usage";
 
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -22,6 +24,7 @@ export function Home() {
   const { speak, speaking } = useSpeak();
   const navigate = useNavigate();
   const [lessonTitle, setLessonTitle] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageToday | null>(null);
 
   useEffect(() => {
     if (!settings) return;
@@ -32,6 +35,10 @@ export function Home() {
       .first()
       .then((row) => setLessonTitle(row?.title ?? null));
   }, [settings]);
+
+  useEffect(() => {
+    fetchUsageToday().then(setUsage).catch(() => setUsage(null));
+  }, []);
 
   if (!settings) return null;
 
@@ -152,6 +159,43 @@ export function Home() {
           <LevelCard level={progress.level} xpInLevel={xpInLevel} pct={xpLevelPct} />
           <StreakCard todayIdx={todayIdx} streakDays={progress.streakDays} />
         </div>
+
+        {/* ── Today's AI usage ── */}
+        {usage && (
+          <div className="card flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="card-label">Today's AI usage</div>
+              <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-semibold capitalize text-ink-3">
+                {usage.plan} plan
+              </span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <UsageBar
+                label="AI Tutor"
+                icon="💬"
+                used={usage.tutor.used}
+                limit={usage.tutor.limit}
+              />
+              <UsageBar
+                label="Lessons"
+                icon="📚"
+                used={usage.lessons.used}
+                limit={usage.lessons.limit}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-light text-ink-3">
+              <span>Resets at midnight UTC</span>
+              {usage.plan === "free" && (
+                <Link
+                  to="/pricing"
+                  className="font-semibold text-gold hover:underline"
+                >
+                  Upgrade for more →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Bottom row: due reviews | word of day ── */}
         <div className="grid gap-5 md:grid-cols-[2fr_1fr]">

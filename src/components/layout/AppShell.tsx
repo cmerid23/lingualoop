@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Home as HomeIcon,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useProgressStore } from "../../store/progressStore";
 import { useAuthStore } from "../../store/authStore";
+import { fetchUsageToday, type UsageBucket } from "../../lib/usage";
 
 interface AppShellProps {
   children: ReactNode;
@@ -51,6 +52,39 @@ function NavLink({ to, active, label, icon, accent = "gold" }: NavLinkProps) {
   );
 }
 
+function UsagePill({ bucket }: { bucket: UsageBucket | null }) {
+  if (!bucket) return null;
+  const unlimited = bucket.limit === -1;
+  const exhausted = !unlimited && bucket.remaining <= 0;
+  const low = !unlimited && !exhausted && bucket.remaining / bucket.limit < 0.2;
+
+  const tone = unlimited
+    ? { bg: "rgba(46,196,182,0.15)", color: "var(--teal-dark)" }
+    : exhausted
+      ? { bg: "rgba(255,107,107,0.18)", color: "var(--coral)" }
+      : low
+        ? { bg: "rgba(200,151,58,0.18)", color: "var(--gold-light)" }
+        : { bg: "rgba(46,196,182,0.15)", color: "var(--teal-dark)" };
+
+  return (
+    <Link
+      to="/pricing"
+      title="AI tutor messages remaining today"
+      className="flex items-center justify-center rounded-full px-2 py-1 text-[10px] font-bold tabular-nums transition hover:opacity-80"
+      style={tone}
+    >
+      💬{" "}
+      {unlimited ? (
+        <span className="ml-0.5">∞</span>
+      ) : (
+        <span className="ml-0.5">
+          {bucket.remaining}/{bucket.limit}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 function planPillClass(plan: string): string {
   if (plan === "premium")
     return "bg-gold/15 text-gold border border-gold/30";
@@ -64,6 +98,14 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
   const xp = useProgressStore((s) => s.progress.xp);
   const user = useAuthStore((s) => s.user);
   const { pathname } = useLocation();
+  const [tutorUsage, setTutorUsage] = useState<UsageBucket | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchUsageToday()
+      .then((u) => setTutorUsage(u.tutor))
+      .catch(() => setTutorUsage(null));
+  }, [user]);
 
   const isHome = pathname === "/home";
   const isLesson = pathname.startsWith("/lesson");
@@ -106,6 +148,7 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
         )}
 
         <div className="mt-auto flex flex-col items-center gap-2">
+          <UsagePill bucket={tutorUsage} />
           <NavLink
             to="/pricing"
             active={isPricing}

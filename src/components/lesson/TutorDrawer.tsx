@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MessageCircle, X, Send, Zap } from "lucide-react";
 import type { LangCode } from "../../data/languages";
-import { tutor } from "../../lib/claude";
+import { ApiError, tutor } from "../../lib/claude";
+import { fetchUsageToday, type UsageBucket } from "../../lib/usage";
 
 interface TutorDrawerProps {
   nativeLang: LangCode;
@@ -25,7 +27,20 @@ export function TutorDrawer({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [tutorUsage, setTutorUsage] = useState<UsageBucket | null>(null);
+  const [plan, setPlan] = useState<string>("free");
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Load usage on first open and any time the drawer opens after sending
+  useEffect(() => {
+    if (!open) return;
+    fetchUsageToday()
+      .then((u) => {
+        setTutorUsage(u.tutor);
+        setPlan(u.plan);
+      })
+      .catch(() => setTutorUsage(null));
+  }, [open]);
 
   useEffect(() => {
     if (listRef.current) {
@@ -33,9 +48,14 @@ export function TutorDrawer({
     }
   }, [messages, sending]);
 
+  const limitReached =
+    tutorUsage !== null && tutorUsage.limit !== -1 && tutorUsage.remaining <= 0;
+  const oneLeft =
+    tutorUsage !== null && tutorUsage.limit !== -1 && tutorUsage.remaining === 1;
+
   async function send() {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || limitReached) return;
 
     const next: ChatMessage[] = [...messages, { role: "user", content: text }];
     setMessages(next);
@@ -51,15 +71,43 @@ export function TutorDrawer({
         lessonTitle,
       });
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      // Optimistic decrement; server is authoritative on next refetch.
+      setTutorUsage((u) =>
+        u && u.limit !== -1
+          ? {
+              used: u.used + 1,
+              limit: u.limit,
+              remaining: Math.max(0, u.remaining - 1),
+            }
+          : u,
+      );
     } catch (err) {
       console.error("Tutor reply failed", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Sorry — I couldn't reach the tutor. Try again in a moment.",
-        },
-      ]);
+      // Quota wall — sync local state from the 429 body.
+      if (err instanceof ApiError && err.status === 429) {
+        const body = err.body as
+          | { used?: number; limit?: number; plan?: string }
+          | null;
+        if (body?.limit != null && body?.used != null) {
+          setTutorUsage({
+            used: body.used,
+            limit: body.limit,
+            remaining: 0,
+          });
+        }
+        if (body?.plan) setPlan(body.plan);
+        // Roll back the user message so the chat doesn't end on a no-op.
+        setMessages((prev) => prev.slice(0, -1));
+        setInput(text);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "Sorry — I couldn't reach the tutor. Try again in a moment.",
+          },
+        ]);
+      }
     } finally {
       setSending(false);
     }
@@ -159,7 +207,46 @@ export function TutorDrawer({
               <span className="h-2 w-2 rounded-full bg-ink-3 animate-typing" style={{ animationDelay: "0.4s", opacity: 0.5 }} />
             </div>
           )}
+
+          {oneLeft && !sending && (
+            <div
+              className="self-center rounded-full px-4 py-1.5 text-[11px] font-semibold"
+              style={{ background: "var(--gold-pale)", color: "var(--gold)" }}
+            >
+              You have 1 tutor message left today.{" "}
+              <Link to="/pricing" className="underline">
+                Upgrade for 100/day →
+              </Link>
+            </div>
+          )}
         </div>
+
+        {/* Limit reached banner */}
+        {limitReached && (
+          <div
+            className="border-t border-gold/30 px-6 py-4"
+            style={{ background: "var(--gold-pale)" }}
+          >
+            <p className="flex items-start gap-2 text-sm font-semibold text-ink">
+              <span className="text-base">💬</span>
+              <span>
+                You've used all {tutorUsage?.limit ?? 0} daily tutor messages
+                {plan === "free" ? " on the free plan." : "."}
+              </span>
+            </p>
+            <Link
+              to="/pricing"
+              onClick={() => setOpen(false)}
+              className="btn-gold mt-3 w-full text-xs"
+            >
+              <Zap className="mr-1 h-3.5 w-3.5" />
+              Upgrade to Pro →
+            </Link>
+            <p className="mt-2 text-center text-[11px] font-light text-ink-3">
+              Resets at midnight UTC
+            </p>
+          </div>
+        )}
 
         {/* Composer */}
         <div className="flex shrink-0 items-end gap-2.5 border-t border-surface-2 px-6 py-4">
@@ -168,13 +255,14 @@ export function TutorDrawer({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             rows={1}
-            placeholder="Ask the tutor…"
-            className="flex-1 resize-none rounded-full border border-surface-3 bg-surface px-5 py-3 text-sm text-ink outline-none transition focus:border-violet"
+            placeholder={limitReached ? "Daily limit reached" : "Ask the tutor…"}
+            disabled={limitReached}
+            className="flex-1 resize-none rounded-full border border-surface-3 bg-surface px-5 py-3 text-sm text-ink outline-none transition focus:border-violet disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => void send()}
-            disabled={!input.trim() || sending}
+            disabled={!input.trim() || sending || limitReached}
             aria-label="Send"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition hover:scale-105 disabled:opacity-40"
             style={{ background: "var(--violet)" }}

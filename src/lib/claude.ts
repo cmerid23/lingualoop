@@ -1,10 +1,12 @@
 /**
- * All Anthropic calls now go through the backend at packages/api/.
+ * All Anthropic calls go through the backend at packages/api/.
  * The API key never touches the browser.
  *
- * Set VITE_API_BASE in .env.local for dev (default: http://localhost:3001).
- * In production, point it at your deployed API origin.
+ * The two AI routes (/api/tutor and /api/generate-lesson) require auth and
+ * are gated by per-plan daily quotas, so we send the bearer token and
+ * surface 429 responses with their structured body so callers can react.
  */
+import { authHeaders } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -21,19 +23,6 @@ export interface TutorRequest {
   lessonTitle: string;
 }
 
-export async function tutor(req: TutorRequest): Promise<string> {
-  const res = await fetch(`${API_BASE}/api/tutor`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) {
-    throw new Error(`tutor ${res.status}: ${await res.text()}`);
-  }
-  const data = (await res.json()) as { reply: string };
-  return data.reply;
-}
-
 export interface GenerateLessonRequest {
   pair: string;
   unit: number;
@@ -43,14 +32,48 @@ export interface GenerateLessonRequest {
   targetLang: string;
 }
 
-export async function generateLessonViaApi<T>(req: GenerateLessonRequest): Promise<T> {
-  const res = await fetch(`${API_BASE}/api/generate-lesson`, {
+/** Error class that carries the HTTP status + parsed body so callers can
+ * react to 429 (limit reached) without string-sniffing. */
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+async function postJson<T>(path: string, payload: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(req),
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error(`generate-lesson ${res.status}: ${await res.text()}`);
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      /* fallthrough */
+    }
+    const message =
+      (body as { error?: string; message?: string } | null)?.message
+      ?? (body as { error?: string } | null)?.error
+      ?? `${res.status} ${res.statusText}`;
+    throw new ApiError(message, res.status, body);
   }
   return (await res.json()) as T;
+}
+
+export async function tutor(req: TutorRequest): Promise<string> {
+  const data = await postJson<{ reply: string }>("/api/tutor", req);
+  return data.reply;
+}
+
+export async function generateLessonViaApi<T>(
+  req: GenerateLessonRequest,
+): Promise<T> {
+  return postJson<T>("/api/generate-lesson", req);
 }

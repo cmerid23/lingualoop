@@ -6,6 +6,7 @@ import { db, pairKey } from "../data/db";
 import { getOrCreateCard, applyGrade } from "../lib/srs";
 import { generateLesson } from "../lib/generateLesson";
 import { syncToServer } from "../lib/sync";
+import { ApiError } from "../lib/claude";
 import { useSettingsStore } from "../store/settingsStore";
 import { useProgressStore } from "../store/progressStore";
 import { AppShell } from "../components/layout/AppShell";
@@ -79,6 +80,11 @@ export function LessonRunner() {
   const [xpEarned, setXpEarned] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [limitInfo, setLimitInfo] = useState<{
+    used: number;
+    limit: number;
+    plan: string;
+  } | null>(null);
 
   // Load lesson from Dexie; if missing, generate via Claude and cache.
   useEffect(() => {
@@ -110,6 +116,16 @@ export function LessonRunner() {
         } catch (err) {
           console.error("Failed to generate lesson", err);
           if (cancelled) return;
+          if (err instanceof ApiError && err.status === 429) {
+            const body = err.body as
+              | { used?: number; limit?: number; plan?: string }
+              | null;
+            setLimitInfo({
+              used: body?.used ?? 0,
+              limit: body?.limit ?? 0,
+              plan: body?.plan ?? "free",
+            });
+          }
           setLesson(null);
           setGenerating(false);
           setLoading(false);
@@ -202,6 +218,46 @@ export function LessonRunner() {
               Generating lesson with AI…
             </p>
           )}
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!lesson && limitInfo) {
+    return (
+      <AppShell bare>
+        <div
+          className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 py-16 text-center"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, rgba(200,151,58,0.08) 0%, transparent 70%)",
+          }}
+        >
+          <div className="text-[64px]">📚</div>
+          <h1 className="font-display text-[36px] font-bold leading-tight tracking-tight">
+            Daily lesson limit reached
+          </h1>
+          <p className="max-w-md text-[15px] font-light leading-relaxed text-ink-3">
+            You've generated {limitInfo.used} of {limitInfo.limit} AI lessons
+            today on the {limitInfo.plan} plan.
+          </p>
+          <div className="mt-2 flex w-full max-w-xs flex-col gap-2">
+            <button
+              onClick={() => navigate("/pricing")}
+              className="btn-gold w-full"
+            >
+              Upgrade to Pro →
+            </button>
+            <button
+              onClick={() => navigate("/home")}
+              className="btn-ghost w-full"
+            >
+              Back to home
+            </button>
+          </div>
+          <p className="mt-3 text-xs font-light text-ink-3">
+            Your limit resets at midnight UTC
+          </p>
         </div>
       </AppShell>
     );

@@ -55,16 +55,31 @@ export const authHeaders = (): Record<string, string> => ({
 });
 
 // ── API calls ──────────────────────────────────────────────────────────────
+/** Carries HTTP status + parsed body so callers can react to 429 etc. */
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function asJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    let message = `${res.status} ${res.statusText}`;
+    let body: unknown = null;
     try {
-      const body = await res.json();
-      if (body?.error) message = body.error;
+      body = await res.json();
     } catch {
       /* fallthrough */
     }
-    throw new Error(message);
+    const message =
+      (body as { message?: string } | null)?.message
+      ?? (body as { error?: string } | null)?.error
+      ?? `${res.status} ${res.statusText}`;
+    throw new ApiError(message, res.status, body);
   }
   return (await res.json()) as T;
 }
