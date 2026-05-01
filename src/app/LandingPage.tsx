@@ -160,46 +160,22 @@ function Hero({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: string }) {
             <span className="h-2 w-2 rounded-full bg-gold" />
             New · Arabic now live
           </span>
-          <h1 className="leading-[1.1] tracking-tight">
-            <span
-              className="block font-light text-[clamp(18px,2.5vw,24px)]"
-              style={{
-                fontFamily: "Sora, sans-serif",
-                fontWeight: 300,
-                color: "rgba(255,255,255,0.6)",
-              }}
-            >
-              The smartest way to learn
-            </span>
-            <span
-              className="mt-2 block font-display text-[clamp(28px,8vw,40px)] sm:text-[clamp(36px,5vw,64px)]"
-              style={{
-                fontWeight: 700,
-                letterSpacing: "-1px",
-                color: "var(--gold-light)",
-              }}
-            >
-              <LangToken tone="gold">Amharic</LangToken>
-              <Dot />
-              <LangToken tone="gold">Tigrinya</LangToken>
-              <Dot />
-              <LangToken tone="gold">Arabic</LangToken>
-            </span>
-            <span
-              className="block font-display text-[clamp(28px,8vw,40px)] sm:text-[clamp(36px,5vw,64px)]"
-              style={{
-                fontWeight: 700,
-                letterSpacing: "-1px",
-                color: "#FFFFFF",
-              }}
-            >
-              <LangToken tone="white">Spanish</LangToken>
-              <Dot />
-              <LangToken tone="white">French</LangToken>
-              <Dot />
-              <LangToken tone="white">English</LangToken>
-            </span>
+          <h1 className="font-display font-bold leading-[1.05] tracking-tight text-white text-[clamp(36px,6vw,64px)]">
+            The smartest way to learn
           </h1>
+          <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[clamp(13px,1.6vw,18px)] font-medium text-white/80">
+            <LangToken>Amharic</LangToken>
+            <Dot />
+            <LangToken>Tigrinya</LangToken>
+            <Dot />
+            <LangToken>Arabic</LangToken>
+            <Dot />
+            <LangToken>Spanish</LangToken>
+            <Dot />
+            <LangToken>French</LangToken>
+            <Dot />
+            <LangToken>English</LangToken>
+          </div>
           <p className="mt-6 text-base font-light leading-relaxed text-white/70 sm:text-lg">
             AI-powered lessons, picture memory, native pronunciation and
             spaced repetition — in 6 languages, 30 learning directions.
@@ -239,20 +215,11 @@ function Hero({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: string }) {
   );
 }
 
-// Single language word inside the headline. Hover swaps to the opposite
-// line's accent: gold → white, white → gold-light. Inherits its base
-// colour from the parent <span>'s inline style.
-function LangToken({
-  tone,
-  children,
-}: {
-  tone: "gold" | "white";
-  children: React.ReactNode;
-}) {
-  const hover =
-    tone === "gold" ? "hover:text-white" : "hover:text-[var(--gold-light)]";
+// One language token in the row beneath the headline. Subtle hover
+// brightens it to gold-light; otherwise inherits the parent's white/80.
+function LangToken({ children }: { children: React.ReactNode }) {
   return (
-    <span className={`cursor-default transition-colors duration-200 ${hover}`}>
+    <span className="cursor-default transition-colors duration-200 hover:text-[var(--gold-light)]">
       {children}
     </span>
   );
@@ -260,7 +227,9 @@ function LangToken({
 
 function Dot() {
   return (
-    <span style={{ color: "var(--teal)", fontWeight: 300 }}> · </span>
+    <span aria-hidden style={{ color: "var(--teal)" }} className="font-light">
+      ·
+    </span>
   );
 }
 
