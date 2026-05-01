@@ -3,7 +3,8 @@
  * Token is held in localStorage under "ll_token".
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+// Empty default = relative URLs. Same-origin in prod, Vite proxies in dev.
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 const TOKEN_KEY = "ll_token";
 
 export interface AuthedUser {

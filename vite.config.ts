@@ -70,5 +70,14 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Proxy /api in dev so frontend code can use relative URLs everywhere.
+    // In production the API serves the frontend on the same origin, so the
+    // same relative URLs Just Work — no env var to configure per environment.
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
   },
 });

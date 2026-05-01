@@ -2,7 +2,7 @@ import type { Lesson, Progress, SrsCard } from "../data/db";
 import { db } from "../data/db";
 import { getToken } from "./auth";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 function authHeaders(token: string): Record<string, string> {
   return {

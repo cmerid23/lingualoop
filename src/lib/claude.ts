@@ -6,7 +6,7 @@
  * In production, point it at your deployed API origin.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 export interface ChatMessage {
   role: "user" | "assistant";
