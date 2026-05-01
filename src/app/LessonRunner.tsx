@@ -5,6 +5,7 @@ import type { Lesson, VocabItem } from "../data/db";
 import { db, pairKey } from "../data/db";
 import { getOrCreateCard, applyGrade } from "../lib/srs";
 import { generateLesson } from "../lib/generateLesson";
+import { syncToServer } from "../lib/sync";
 import { useSettingsStore } from "../store/settingsStore";
 import { useProgressStore } from "../store/progressStore";
 import { AppShell } from "../components/layout/AppShell";
@@ -138,6 +139,7 @@ export function LessonRunner() {
       if (next >= totalSteps) {
         // Lesson complete
         await recordActivity(xpEarned + xpDelta, MINUTES_PER_LESSON);
+        void syncToServer();
         setFinished(true);
       } else {
         setCursor(next);

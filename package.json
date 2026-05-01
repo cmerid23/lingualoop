@@ -4,14 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev:frontend": "vite",
+    "dev:api": "pnpm --filter @lingualoop/api dev",
+    "dev": "concurrently \"pnpm dev:frontend\" \"pnpm dev:api\"",
+    "build:frontend": "tsc && vite build",
+    "build:api": "pnpm --filter @lingualoop/api build",
+    "build": "pnpm build:frontend && pnpm build:api",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "dexie": "^4.0.8",
     "dexie-react-hooks": "^1.1.7",
     "lucide-react": "^0.460.0",
@@ -28,6 +31,7 @@
     "@typescript-eslint/parser": "^8.14.0",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import type { LangCode } from "../../data/languages";
-import { LANGUAGES } from "../../data/languages";
-import { client, MODELS } from "../../lib/claude";
+import { tutor } from "../../lib/claude";
 
 interface TutorDrawerProps {
   nativeLang: LangCode;
@@ -14,17 +13,6 @@ interface TutorDrawerProps {
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-}
-
-function buildSystemPrompt(
-  nativeLang: LangCode,
-  targetLang: LangCode,
-  level: "A1" | "A2" | "B1",
-  lessonTitle: string,
-): string {
-  const native = LANGUAGES[nativeLang].name;
-  const target = LANGUAGES[targetLang].name;
-  return `You are a patient language tutor. The student's native language is ${native} and they are learning ${target} at CEFR level ${level}. Current lesson: ${lessonTitle}. Keep answers to 3 sentences max unless asked for more. Romanize Amharic and Tigrinya when explaining pronunciation.`;
 }
 
 export function TutorDrawer({
@@ -56,16 +44,13 @@ export function TutorDrawer({
     setSending(true);
 
     try {
-      const response = await client.messages.create({
-        model: MODELS.cheap,
-        max_tokens: 400,
-        system: buildSystemPrompt(nativeLang, targetLang, level, lessonTitle),
+      const reply = await tutor({
         messages: next.map((m) => ({ role: m.role, content: m.content })),
+        nativeLang,
+        targetLang,
+        level,
+        lessonTitle,
       });
-
-      const textBlock = response.content.find((b) => b.type === "text");
-      const reply =
-        textBlock && textBlock.type === "text" ? textBlock.text : "";
 
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (err) {

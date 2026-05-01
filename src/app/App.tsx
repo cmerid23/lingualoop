@@ -4,6 +4,7 @@ import { AppRoutes } from "./routes";
 import { useSettingsStore } from "../store/settingsStore";
 import { useProgressStore } from "../store/progressStore";
 import { runSeed } from "../data/seed";
+import { pullFromServer } from "../lib/sync";
 
 export function App() {
   const loadSettings = useSettingsStore((s) => s.load);
@@ -14,6 +15,10 @@ export function App() {
     (async () => {
       // Order matters: seed first so the home screen has lessons to show.
       await runSeed();
+      await Promise.all([loadSettings(), loadProgress()]);
+      // Pull authoritative server state (no-op without JWT / offline).
+      await pullFromServer();
+      // Reload local stores in case server state replaced them.
       await Promise.all([loadSettings(), loadProgress()]);
       setBooted(true);
     })().catch((err) => {

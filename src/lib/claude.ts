@@ -1,15 +1,56 @@
-import Anthropic from "@anthropic-ai/sdk";
+/**
+ * All Anthropic calls now go through the backend at packages/api/.
+ * The API key never touches the browser.
+ *
+ * Set VITE_API_BASE in .env.local for dev (default: http://localhost:3001).
+ * In production, point it at your deployed API origin.
+ */
 
-// TODO: PHASE-2 — move all calls to a Supabase Edge Function proxy.
-// dangerouslyAllowBrowser is intentional for Phase 1 solo testing only.
-const client = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
-export const MODELS = {
-  cheap: "claude-haiku-4-5",   // tutor chat, hints
-  smart: "claude-sonnet-4-6",  // lesson generation
-};
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
-export { client };
+export interface TutorRequest {
+  messages: ChatMessage[];
+  nativeLang: string;
+  targetLang: string;
+  level: string;
+  lessonTitle: string;
+}
+
+export async function tutor(req: TutorRequest): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/tutor`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    throw new Error(`tutor ${res.status}: ${await res.text()}`);
+  }
+  const data = (await res.json()) as { reply: string };
+  return data.reply;
+}
+
+export interface GenerateLessonRequest {
+  pair: string;
+  unit: number;
+  lessonNum: number;
+  level: string;
+  nativeLang: string;
+  targetLang: string;
+}
+
+export async function generateLessonViaApi<T>(req: GenerateLessonRequest): Promise<T> {
+  const res = await fetch(`${API_BASE}/api/generate-lesson`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    throw new Error(`generate-lesson ${res.status}: ${await res.text()}`);
+  }
+  return (await res.json()) as T;
+}
