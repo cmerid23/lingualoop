@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS variables mirror the tailwind tokens so they're available
+   inside inline styles, SVG fills, etc. Single source of truth: tailwind.config.ts. */
+:root {
+  --ink: #0A0A0F;
+  --ink-2: #1A1A2E;
+  --ink-3: #2D2D4E;
+  --surface: #F5F3EE;
+  --surface-2: #ECEAE3;
+  --surface-3: #E0DDD4;
+  --gold: #C8973A;
+  --gold-light: #F0C96B;
+  --gold-pale: #FBF3E0;
+  --teal: #2EC4B6;
+  --teal-dark: #1A9E92;
+  --coral: #FF6B6B;
+  --violet: #7C3AED;
+  --violet-light: #9F5FE8;
+  --green: #22C55E;
+  --shadow: 0 4px 24px rgba(10, 10, 15, 0.08);
+  --shadow-lg: 0 12px 48px rgba(10, 10, 15, 0.14);
+}
+
 @layer base {
   html,
   body,
@@ -10,15 +32,17 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-surface text-ink antialiased;
     font-family: theme("fontFamily.sans");
     /* Respect iOS safe areas */
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
-  .dark body {
-    @apply bg-slate-950 text-slate-100;
+  /* Display font for headings */
+  h1, h2, h3 {
+    font-family: theme("fontFamily.display");
+    letter-spacing: -0.02em;
   }
 
   /* Geʽez utility — apply to any text containing Amharic or Tigrinya */
@@ -27,9 +51,9 @@
     font-feature-settings: "liga" on;
   }
 
-  /* Arabic utility — apply to any text in Arabic. RTL is intentional. */
+  /* Arabic utility — RTL handled at the element level */
   .font-arabic {
-    font-family: "Noto Naskh Arabic", "Scheherazade New", "Arial", sans-serif;
+    font-family: theme("fontFamily.arabic");
     direction: rtl;
   }
 
@@ -38,19 +62,87 @@
   a {
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* Custom scrollbar to match the warm aesthetic */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 4px;
+  }
 }
 
 @layer components {
+  /* ── BUTTONS ── */
   .btn {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+    @apply btn bg-ink text-white hover:bg-ink-2 hover:-translate-y-0.5 hover:shadow-soft;
+  }
+  .btn-gold {
+    @apply btn text-ink shadow-gold hover:-translate-y-0.5;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  }
+  .btn-teal {
+    @apply btn text-white shadow-teal hover:-translate-y-0.5;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+  }
+  .btn-violet {
+    @apply btn bg-violet text-white shadow-violet hover:-translate-y-0.5 hover:bg-violet/90;
   }
   .btn-ghost {
-    @apply btn bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700;
+    @apply btn bg-white text-ink border border-surface-3 hover:bg-surface-2;
   }
+  .btn-danger {
+    @apply btn bg-coral text-white hover:opacity-90;
+  }
+
+  /* ── CARDS ── */
   .card {
-    @apply rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800;
+    @apply rounded-2xl bg-white p-6 shadow-soft border border-surface-2;
+  }
+  .card-dark {
+    @apply rounded-2xl border-0 p-6 shadow-soft text-white;
+    background: var(--ink);
+  }
+
+  /* ── BADGES / PILLS ── */
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .pill-gold {
+    @apply pill border;
+    background: var(--gold-pale);
+    color: var(--gold);
+    border-color: rgba(200, 151, 58, 0.3);
+  }
+  .pill-streak {
+    @apply pill text-white shadow-md;
+    background: linear-gradient(135deg, #ff6b35, #ff8c5a);
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.3);
+  }
+  .pill-teal {
+    @apply pill;
+    background: rgba(46, 196, 182, 0.1);
+    color: var(--teal-dark);
+  }
+
+  /* ── CARD LABELS (small caps section headers) ── */
+  .card-label {
+    @apply text-[11px] font-semibold uppercase tracking-[2px] text-ink-3/50;
+  }
+  .card-label-on-dark {
+    @apply text-[11px] font-semibold uppercase tracking-[2px] text-white/40;
+  }
+
+  /* ── ACTIVITY PILL (lesson activity indicator) ── */
+  .activity-pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-surface-3 bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-3 shadow-soft;
   }
 }

@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { Volume2, X, CheckCircle } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import type { VocabItem } from "../../data/db";
 import type { LangCode } from "../../data/languages";
 import { scriptClass } from "../../data/languages";
 import { SketchImage } from "./SketchImage";
-import { Button } from "../ui/Button";
 import { useSpeak } from "../../lib/useSpeak";
 
 interface SoundFirstProps {
@@ -20,18 +19,12 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
-/**
- * Activity 2: Sound-First Recognition
- *
- * User hears the target word, then picks its native-language meaning
- * from 4 options (1 correct + 3 distractors). Builds listening ear
- * before focusing on reading.
- */
 export function SoundFirstRecognition({
   item,
   allItems,
   targetLang,
-  nativeLang,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  nativeLang: _nativeLang,
   onResult,
 }: SoundFirstProps) {
   const { speak, speaking } = useSpeak();
@@ -39,9 +32,8 @@ export function SoundFirstRecognition({
   const [selected, setSelected] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
 
-  const correct = item.src; // native-language answer
+  const correct = item.src;
 
-  // Build 4 choices: correct + 3 random distractors from the same lesson
   useEffect(() => {
     const others = allItems.filter((v) => v.tgt !== item.tgt);
     const distractors = shuffle(others).slice(0, 3);
@@ -60,76 +52,77 @@ export function SoundFirstRecognition({
     if (revealed) return;
     setSelected(src);
     setRevealed(true);
-    // Short delay before moving on so the result registers visually
     setTimeout(() => onResult(src === correct), 1200);
   }
 
-  function optionStyle(src: string): string {
-    if (!revealed) {
-      return selected === src
-        ? "ring-2 ring-brand-500 bg-brand-50 dark:bg-brand-950"
-        : "hover:ring-brand-200 hover:bg-slate-50 dark:hover:bg-slate-800";
-    }
-    if (src === correct) return "ring-2 ring-green-500 bg-green-50 dark:bg-green-950";
-    if (src === selected) return "ring-2 ring-red-400 bg-red-50 dark:bg-red-950";
+  function choiceClass(src: string): string {
+    if (!revealed) return "border-surface-2 hover:-translate-y-0.5 hover:border-ink-3";
+    if (src === correct) return "border-[#22c55e]";
+    if (src === selected) return "border-coral";
     return "opacity-50";
+  }
+  function choiceBg(src: string): string {
+    if (!revealed) return "bg-white";
+    if (src === correct) return "bg-[rgba(34,197,94,0.06)]";
+    if (src === selected) return "bg-[rgba(255,107,107,0.06)]";
+    return "bg-white";
   }
 
   return (
-    <div className="flex flex-col gap-6 py-4">
-      {/* Instruction + play button */}
-      <div className="flex flex-col items-center gap-3">
-        <p className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
-          Listen and pick the correct meaning
-        </p>
+    <div className="flex w-full flex-col items-center gap-7">
+      <p className="text-center text-[15px] font-medium text-ink-3">
+        Tap the speaker, then pick the correct meaning
+      </p>
+
+      {/* Sound button */}
+      <div className="relative">
         <button
           onClick={handlePlay}
           disabled={speaking}
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-100 text-brand-700 transition active:scale-95 hover:bg-brand-200 disabled:opacity-50 dark:bg-brand-900 dark:text-brand-200"
           aria-label="Play word"
+          className="flex h-[120px] w-[120px] items-center justify-center rounded-full border-0 bg-ink text-white transition hover:scale-105 disabled:opacity-50"
+          style={{ boxShadow: "0 12px 40px rgba(10,10,15,0.25)" }}
         >
-          <Volume2 className="h-10 w-10" />
+          <Volume2 className="h-9 w-9" />
         </button>
-        {/* Reveal the target word text after selection */}
-        {revealed && (
-          <div className={`text-2xl font-bold ${scriptClass(targetLang)}`}>
-            {item.tgt}
-            {item.translit && (
-              <span className="ml-2 text-base font-normal text-slate-500 italic">
-                ({item.translit})
-              </span>
-            )}
-          </div>
-        )}
+        <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold uppercase tracking-[2px] text-ink-3 opacity-50">
+          Tap to hear
+        </span>
       </div>
 
-      {/* Answer options */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="h-6" />
+
+      {/* Reveal target word after pick */}
+      {revealed && (
+        <div className={`text-center font-display text-2xl font-bold ${scriptClass(targetLang)}`}>
+          {item.tgt}
+          {item.translit && (
+            <span className="ml-2 text-base font-normal italic text-ink-3">
+              ({item.translit})
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Choices grid */}
+      <div className="grid w-full grid-cols-2 gap-3.5">
         {options.map((opt) => (
           <button
             key={opt.tgt}
             onClick={() => handlePick(opt.src)}
             disabled={revealed}
-            className={`card flex flex-col items-center gap-2 p-3 transition ${optionStyle(opt.src)}`}
+            className={`flex flex-col items-center gap-2.5 rounded-[20px] border-2 p-5 shadow-soft transition ${choiceClass(opt.src)} ${choiceBg(opt.src)}`}
           >
-            <SketchImage word={opt.src} size={72} />
-            <span className="text-sm font-semibold text-center">{opt.src}</span>
-            {/* Result icon */}
-            {revealed && opt.src === correct && (
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            )}
-            {revealed && opt.src === selected && opt.src !== correct && (
-              <X className="h-5 w-5 text-red-500" />
-            )}
+            <SketchImage word={opt.src} size={64} />
+            <span className="text-sm font-semibold text-ink">{opt.src}</span>
           </button>
         ))}
       </div>
 
-      {/* If not enough distractors (small lesson), show Continue early */}
       {revealed && options.length < 2 && (
-        <Button fullWidth onClick={() => onResult(selected === correct)}>
+        <button onClick={() => onResult(selected === correct)} className="btn-primary w-full">
           Continue
-        </Button>
+        </button>
       )}
     </div>
   );

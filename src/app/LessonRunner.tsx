@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Trophy } from "lucide-react";
 import type { Lesson, VocabItem } from "../data/db";
@@ -194,11 +194,11 @@ export function LessonRunner() {
   // ---------------------------------------------------------------------------
   if (loading) {
     return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center gap-4 py-24">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-500" />
+      <AppShell bare>
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 py-24">
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-surface-2 border-t-gold" />
           {generating && (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-sm font-medium text-ink-3">
               Generating lesson with AI…
             </p>
           )}
@@ -209,9 +209,9 @@ export function LessonRunner() {
 
   if (!lesson) {
     return (
-      <AppShell>
-        <div className="flex flex-col items-center gap-4 py-24 text-center">
-          <p className="text-slate-600 dark:text-slate-400">
+      <AppShell bare>
+        <div className="flex min-h-screen flex-col items-center justify-center gap-5 px-6 py-24 text-center">
+          <p className="font-light text-ink-3">
             Lesson not found. It may not have been generated yet.
           </p>
           <Button onClick={() => navigate("/")}>Back to home</Button>
@@ -229,77 +229,97 @@ export function LessonRunner() {
     />;
   }
 
+  // Activity meta for the pill
+  const activityMeta: Record<string, { label: string; dot: string }> = {
+    picture: { label: "Picture Association", dot: "var(--gold)" },
+    sound: { label: "Listen & Choose", dot: "var(--teal)" },
+    pronunciation: { label: "Pronunciation Drill", dot: "var(--coral)" },
+    sentence: { label: "Build the Sentence", dot: "var(--violet)" },
+  };
+  const meta = currentActivity ? activityMeta[currentActivity.type] : null;
+
   return (
-    <AppShell>
-      {/* Top bar */}
-      <div className="mb-4 flex items-center gap-3">
+    <AppShell bare>
+      {/* Lesson topbar */}
+      <div className="flex items-center gap-4 border-b border-surface-3 bg-surface px-6 py-5 lg:px-9">
         <button
           onClick={() => navigate("/")}
-          className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
           aria-label="Exit lesson"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-3 bg-white text-ink-3 transition hover:bg-surface-2"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </button>
-        {/* Progress bar */}
-        <div className="flex-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-brand-500 rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${progress * 100}%` }}
-          />
+        <div className="flex-1">
+          <div className="h-2.5 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full transition-[width] duration-500 ease-out"
+              style={{
+                width: `${progress * 100}%`,
+                background: "linear-gradient(90deg, var(--teal), var(--teal-dark))",
+              }}
+            />
+          </div>
         </div>
-        <span className="text-sm font-semibold text-slate-500 tabular-nums">
-          {cursor + 1}/{totalSteps}
+        <span className="whitespace-nowrap text-sm font-semibold text-ink-3 tabular-nums">
+          {cursor + 1} / {totalSteps}
         </span>
       </div>
 
-      {/* Activity label */}
-      <div className="mb-3 text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500 font-medium text-center">
-        {currentActivity?.type === "picture" && "Picture Association"}
-        {currentActivity?.type === "sound" && "Listen & Choose"}
-        {currentActivity?.type === "pronunciation" && "Pronunciation Drill"}
-        {currentActivity?.type === "sentence" && "Build a Sentence"}
-      </div>
+      {/* Activity pill */}
+      {meta && (
+        <div className="mt-7 flex justify-center">
+          <div className="activity-pill">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: meta.dot }}
+            />
+            {meta.label}
+          </div>
+        </div>
+      )}
 
       {/* Active activity */}
-      {currentActivity?.type === "picture" && (
-        <PictureAssociation
-          key={`picture-${cursor}`}
-          item={currentActivity.item}
-          targetLang={targetLang}
-          nativeLang={nativeLang}
-          onContinue={() => handlePictureContinue(currentActivity.item)}
-        />
-      )}
+      <div className="mx-auto flex w-full max-w-[620px] flex-col items-center px-6 py-8 lg:px-9">
+        {currentActivity?.type === "picture" && (
+          <PictureAssociation
+            key={`picture-${cursor}`}
+            item={currentActivity.item}
+            targetLang={targetLang}
+            nativeLang={nativeLang}
+            onContinue={() => handlePictureContinue(currentActivity.item)}
+          />
+        )}
 
-      {currentActivity?.type === "sound" && (
-        <SoundFirstRecognition
-          key={`sound-${cursor}`}
-          item={currentActivity.item}
-          allItems={lesson.vocab}
-          targetLang={targetLang}
-          nativeLang={nativeLang}
-          onResult={(correct) => handleSoundResult(currentActivity.item, correct)}
-        />
-      )}
+        {currentActivity?.type === "sound" && (
+          <SoundFirstRecognition
+            key={`sound-${cursor}`}
+            item={currentActivity.item}
+            allItems={lesson.vocab}
+            targetLang={targetLang}
+            nativeLang={nativeLang}
+            onResult={(correct) => handleSoundResult(currentActivity.item, correct)}
+          />
+        )}
 
-      {currentActivity?.type === "pronunciation" && (
-        <PronunciationDrill
-          key={`pron-${cursor}`}
-          item={currentActivity.item}
-          targetLang={targetLang}
-          onResult={(grade) => handlePronunciationResult(currentActivity.item, grade)}
-        />
-      )}
+        {currentActivity?.type === "pronunciation" && (
+          <PronunciationDrill
+            key={`pron-${cursor}`}
+            item={currentActivity.item}
+            targetLang={targetLang}
+            onResult={(grade) => handlePronunciationResult(currentActivity.item, grade)}
+          />
+        )}
 
-      {currentActivity?.type === "sentence" && lesson.phrases[currentActivity.phraseIdx] && (
-        <SentenceBuild
-          key={`sentence-${cursor}`}
-          phrase={lesson.phrases[currentActivity.phraseIdx]}
-          targetLang={targetLang}
-          nativeLang={nativeLang}
-          onResult={handleSentenceResult}
-        />
-      )}
+        {currentActivity?.type === "sentence" && lesson.phrases[currentActivity.phraseIdx] && (
+          <SentenceBuild
+            key={`sentence-${cursor}`}
+            phrase={lesson.phrases[currentActivity.phraseIdx]}
+            targetLang={targetLang}
+            nativeLang={nativeLang}
+            onResult={handleSentenceResult}
+          />
+        )}
+      </div>
 
       <TutorDrawer
         nativeLang={nativeLang}
@@ -328,37 +348,124 @@ function LessonComplete({
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
   return (
-    <AppShell>
-      <div className="flex flex-col items-center gap-6 py-12 text-center">
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900">
-          <Trophy className="h-12 w-12 text-brand-600 dark:text-brand-300" />
+    <AppShell bare>
+      <Confetti count={48} />
+      <div
+        className="flex min-h-screen flex-col items-center justify-center px-6 py-16 text-center"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, rgba(200,151,58,0.08) 0%, transparent 70%)",
+        }}
+      >
+        <div
+          className="mb-7 flex h-[120px] w-[120px] items-center justify-center rounded-[36px] border-2 animate-bounce-in"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--gold-pale), #FFF8E7)",
+            borderColor: "rgba(200,151,58,0.2)",
+            boxShadow: "0 12px 40px rgba(200,151,58,0.2)",
+          }}
+        >
+          <Trophy className="h-14 w-14 text-gold" />
         </div>
-        <div>
-          <h1 className="text-3xl font-bold">Lesson complete!</h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Great work. Keep up the streak.
-          </p>
+        <h1 className="font-display text-[40px] font-bold leading-tight tracking-tight">
+          Lesson Complete!
+        </h1>
+        <p className="mt-2 text-base font-light text-ink-3">
+          You crushed it. Your progress has been saved.
+        </p>
+
+        <div className="mt-9 flex gap-4">
+          <StatBox label="XP earned" value={`+${xpEarned}`} variant="gold" />
+          <StatBox label="Accuracy" value={`${pct}%`} variant={pct >= 70 ? "green" : "default"} />
+          <StatBox label="Questions" value={String(total)} variant="default" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4 w-full max-w-xs">
-          <Stat label="XP earned" value={`+${xpEarned}`} color="text-brand-600 dark:text-brand-300" />
-          <Stat label="Accuracy" value={`${pct}%`} color={pct >= 70 ? "text-green-600" : "text-amber-600"} />
-          <Stat label="Questions" value={String(total)} color="text-slate-700 dark:text-slate-300" />
-        </div>
-
-        <Button fullWidth onClick={onHome}>
+        <button onClick={onHome} className="btn-primary mt-9 w-full max-w-xs">
           Back to home
-        </Button>
+        </button>
       </div>
     </AppShell>
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+function StatBox({
+  label,
+  value,
+  variant,
+}: {
+  label: string;
+  value: string;
+  variant: "gold" | "green" | "default";
+}) {
+  const valueClr =
+    variant === "gold"
+      ? "text-gold"
+      : variant === "green"
+        ? "text-[#22c55e]"
+        : "text-ink";
   return (
-    <div className="card flex flex-col items-center gap-1 py-4">
-      <span className={`text-2xl font-bold ${color}`}>{value}</span>
-      <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+    <div className="card min-w-[100px] py-5">
+      <div className={`font-display text-[30px] font-bold leading-none ${valueClr}`}>
+        {value}
+      </div>
+      <div className="mt-1 text-xs font-medium text-ink-3">{label}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Confetti — fires once on the complete screen.
+// Each piece gets a random horizontal position, color, size, duration, and
+// delay so the burst feels organic rather than uniform.
+// ---------------------------------------------------------------------------
+const CONFETTI_COLORS = [
+  "#C8973A", // gold
+  "#F0C96B", // gold-light
+  "#2EC4B6", // teal
+  "#7C3AED", // violet
+  "#FF6B6B", // coral
+  "#22C55E", // green
+];
+
+function Confetti({ count = 48 }: { count?: number }) {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        duration: 2.6 + Math.random() * 2.2,
+        delay: Math.random() * 0.6,
+        size: 6 + Math.random() * 6,
+      })),
+    [count],
+  );
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-[60] overflow-hidden"
+      aria-hidden
+    >
+      {pieces.map((p) => {
+        const style: CSSProperties = {
+          left: `${p.left}%`,
+          top: -10,
+          width: p.size,
+          height: p.size,
+          background: p.color,
+          borderRadius: 2,
+          animationDuration: `${p.duration}s`,
+          animationDelay: `${p.delay}s`,
+        };
+        return (
+          <span
+            key={p.id}
+            className="absolute animate-confetti-fall"
+            style={style}
+          />
+        );
+      })}
     </div>
   );
 }

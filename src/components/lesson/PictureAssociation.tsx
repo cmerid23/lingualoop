@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { Volume2, CheckCircle } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import type { VocabItem } from "../../data/db";
 import type { LangCode } from "../../data/languages";
 import { LANGUAGES, scriptClass } from "../../data/languages";
 import { SketchImage } from "./SketchImage";
-import { Button } from "../ui/Button";
 import { useSpeak } from "../../lib/useSpeak";
 
 interface PictureAssociationProps {
@@ -14,13 +13,6 @@ interface PictureAssociationProps {
   onContinue: () => void;
 }
 
-/**
- * Activity 1: Picture Association
- *
- * Show the sketch + target word. User hears the pronunciation.
- * They tap "Got it" to move on. No failure state here — this is pure
- * input/encoding, not testing.
- */
 export function PictureAssociation({
   item,
   targetLang,
@@ -28,11 +20,10 @@ export function PictureAssociation({
   onContinue,
 }: PictureAssociationProps) {
   const { speak, speaking, warning } = useSpeak();
-  const [heard, setHeard] = useState(false);
+  const [, setHeard] = useState(false);
   const tgtMeta = LANGUAGES[targetLang];
   const nativeMeta = LANGUAGES[nativeLang];
 
-  // Auto-play on mount
   useEffect(() => {
     speak(item.tgt, targetLang).then(() => setHeard(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -44,58 +35,56 @@ export function PictureAssociation({
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4">
-      {/* Sketch */}
-      <SketchImage word={item.src} size={148} className="shadow-md" />
+    <div className="flex w-full flex-col items-center gap-8">
+      {/* Sketch frame */}
+      <div
+        className="flex h-[200px] w-[200px] items-center justify-center rounded-[28px] border-2 border-surface-2 bg-white animate-float shadow-lift"
+      >
+        <SketchImage word={item.src} size={140} />
+      </div>
 
-      {/* Target word */}
+      {/* Word display */}
       <div className="text-center">
         <div
-          className={`text-4xl font-bold tracking-wide ${scriptClass(targetLang)}`}
+          className={`font-display text-[48px] font-bold leading-none tracking-tight text-ink ${scriptClass(targetLang)}`}
         >
           {item.tgt}
         </div>
-
-        {/* Transliteration for Geʽez scripts */}
         {item.translit && (
-          <div className="mt-1 text-lg text-slate-500 italic">
+          <div className="mt-2 text-base font-light italic text-ink-3">
             {item.translit}
           </div>
         )}
-
-        {/* Native meaning */}
-        <div className="mt-2 text-base text-slate-500 dark:text-slate-400">
+        <div className="mt-2.5 text-[15px] font-normal text-ink-3">
           {tgtMeta.flag} → {nativeMeta.flag}{" "}
-          <span className="font-medium text-slate-700 dark:text-slate-200">
-            {item.src}
-          </span>
+          <span className="font-medium text-ink">{item.src}</span>
         </div>
       </div>
 
+      {/* Speak button */}
+      <button
+        onClick={handleListen}
+        disabled={speaking}
+        aria-label={speaking ? "Playing" : "Play pronunciation"}
+        className={`flex h-[60px] w-[60px] items-center justify-center rounded-full border-0 bg-ink text-white shadow-lift transition hover:scale-105 disabled:opacity-50 ${speaking ? "animate-pulse-ring bg-teal" : ""}`}
+      >
+        <Volume2 className="h-5 w-5" />
+      </button>
+
       {/* TTS warning for am/ti on non-Chrome */}
       {warning && (
-        <div className="w-full rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200 ring-1 ring-amber-200">
+        <div
+          className="w-full rounded-2xl px-4 py-3 text-sm font-light"
+          style={{ background: "var(--gold-pale)", color: "var(--gold)" }}
+        >
           🎧 {warning}
         </div>
       )}
 
-      {/* Controls */}
-      <div className="flex w-full flex-col gap-3">
-        <Button
-          variant="ghost"
-          fullWidth
-          onClick={handleListen}
-          disabled={speaking}
-        >
-          <Volume2 className="mr-2 h-4 w-4" />
-          {speaking ? "Playing…" : "Listen again"}
-        </Button>
-
-        <Button fullWidth onClick={onContinue}>
-          <CheckCircle className="mr-2 h-4 w-4" />
-          Got it!
-        </Button>
-      </div>
+      {/* Got it */}
+      <button onClick={onContinue} className="btn-primary w-full">
+        Got it ✓
+      </button>
     </div>
   );
 }

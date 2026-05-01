@@ -4,7 +4,6 @@ import type { VocabItem } from "../../data/db";
 import type { LangCode } from "../../data/languages";
 import { LANGUAGES, scriptClass } from "../../data/languages";
 import { SketchImage } from "./SketchImage";
-import { Button } from "../ui/Button";
 import { useSpeak } from "../../lib/useSpeak";
 
 interface PronunciationDrillProps {
@@ -17,14 +16,6 @@ type DrillState = "idle" | "playing" | "recording" | "done";
 
 const STT_UNRELIABLE_LANGS: LangCode[] = ["am", "ti"];
 
-/**
- * Activity 3: Pronunciation Drill
- *
- * 1. User hears native TTS.
- * 2. They record themselves (Web Speech STT where supported).
- * 3. They self-grade 1–4 OR we compare the transcript text for en/es/fr.
- * 4. For am/ti: STT is skipped; user self-grades after listening.
- */
 export function PronunciationDrill({
   item,
   targetLang,
@@ -41,7 +32,6 @@ export function PronunciationDrill({
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
   const meta = LANGUAGES[targetLang];
 
-  // Auto-play on mount
   useEffect(() => {
     setState("playing");
     speak(item.tgt, targetLang).then(() => setState("idle"));
@@ -92,7 +82,6 @@ export function PronunciationDrill({
     setState("done");
   }
 
-  // Simple Jaro similarity for short strings (good enough for single words)
   function textSimilarity(a: string, b: string): number {
     if (a === b) return 1;
     if (!a || !b) return 0;
@@ -129,11 +118,10 @@ export function PronunciationDrill({
   }
 
   function accuracyColor(pct: number): string {
-    if (pct >= 80) return "text-green-600 dark:text-green-400";
-    if (pct >= 50) return "text-amber-600 dark:text-amber-400";
-    return "text-red-500 dark:text-red-400";
+    if (pct >= 80) return "text-[#22c55e]";
+    if (pct >= 50) return "text-gold";
+    return "text-coral";
   }
-
   function accuracyLabel(pct: number): string {
     if (pct >= 85) return "Excellent! 🎉";
     if (pct >= 65) return "Pretty good! Keep going.";
@@ -141,78 +129,83 @@ export function PronunciationDrill({
     return "Keep practicing — it gets easier!";
   }
 
+  const grades = [
+    { grade: 1, label: "Again", emoji: "😓", bg: "rgba(255,107,107,0.1)", color: "var(--coral)" },
+    { grade: 2, label: "Hard", emoji: "😤", bg: "rgba(245,158,11,0.1)", color: "#f59e0b" },
+    { grade: 3, label: "Good", emoji: "😊", bg: "rgba(46,196,182,0.1)", color: "var(--teal-dark)" },
+    { grade: 4, label: "Easy", emoji: "🎉", bg: "rgba(34,197,94,0.1)", color: "#22c55e" },
+  ] as const;
+
   return (
-    <div className="flex flex-col items-center gap-5 py-4">
-      <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+    <div className="flex w-full flex-col items-center gap-6">
+      <p className="text-center text-[15px] font-medium text-ink-3">
         Listen, then say it out loud
       </p>
 
-      <SketchImage word={item.src} size={120} className="shadow-md" />
+      <div className="flex h-[140px] w-[140px] items-center justify-center rounded-[28px] border-2 border-surface-2 bg-white shadow-lift animate-float">
+        <SketchImage word={item.src} size={100} />
+      </div>
 
-      {/* Target word */}
       <div className="text-center">
-        <div className={`text-3xl font-bold ${scriptClass(targetLang)}`}>
+        <div
+          className={`font-display text-[36px] font-bold leading-none tracking-tight text-ink ${scriptClass(targetLang)}`}
+        >
           {item.tgt}
         </div>
         {item.translit && (
-          <div className="mt-1 text-base text-slate-500 italic">{item.translit}</div>
+          <div className="mt-1.5 text-base font-light italic text-ink-3">
+            {item.translit}
+          </div>
         )}
       </div>
 
-      {/* Listen button */}
-      <Button
-        variant="ghost"
-        onClick={handleListen}
-        disabled={speaking || state === "recording"}
-      >
+      <button onClick={handleListen} disabled={speaking || state === "recording"} className="btn-ghost">
         <Volume2 className="mr-2 h-4 w-4" />
         {speaking ? "Playing…" : "Listen"}
-      </Button>
+      </button>
 
-      {/* STT not available for this lang */}
       {!sttSupported && state !== "done" && (
-        <div className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:bg-blue-950 dark:text-blue-200 ring-1 ring-blue-200">
+        <div
+          className="w-full rounded-2xl px-4 py-3 text-sm font-light"
+          style={{ background: "var(--gold-pale)", color: "var(--gold)" }}
+        >
           🎙️ Microphone scoring isn't available for {meta.name} yet. Listen
           carefully, then self-grade below.
         </div>
       )}
 
-      {/* Recording controls (only for STT-supported langs) */}
       {sttSupported && state !== "done" && (
-        <div className="flex flex-col items-center gap-3 w-full">
+        <div className="flex flex-col items-center gap-3">
           {state === "recording" ? (
             <button
               onClick={stopRecording}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg animate-pulse"
               aria-label="Stop recording"
+              className="flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-coral text-white shadow-lift"
             >
-              <MicOff className="h-8 w-8" />
+              <MicOff className="h-7 w-7" />
             </button>
           ) : (
             <button
               onClick={startRecording}
               disabled={state === "playing"}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg transition hover:bg-brand-600 active:scale-95 disabled:opacity-50"
               aria-label="Start recording"
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-ink text-white shadow-lift transition hover:scale-105 disabled:opacity-50"
             >
-              <Mic className="h-8 w-8" />
+              <Mic className="h-7 w-7" />
             </button>
           )}
-          <p className="text-xs text-slate-500">
+          <p className="text-xs font-medium text-ink-3">
             {state === "recording" ? "Listening… tap to stop" : "Tap to speak"}
           </p>
         </div>
       )}
 
-      {/* Result */}
       {state === "done" && (
-        <div className="w-full flex flex-col gap-4">
+        <div className="flex w-full flex-col gap-4">
           {transcript && (
-            <div className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-3 text-center">
-              <p className="text-xs text-slate-500 mb-1">You said</p>
-              <p className="font-semibold text-slate-800 dark:text-slate-200">
-                "{transcript}"
-              </p>
+            <div className="rounded-2xl bg-white border border-surface-2 px-4 py-3 text-center shadow-soft">
+              <p className="card-label">You said</p>
+              <p className="mt-1 font-semibold text-ink">"{transcript}"</p>
               {accuracy !== null && (
                 <p className={`mt-1 text-sm font-bold ${accuracyColor(accuracy)}`}>
                   {accuracy}% match — {accuracyLabel(accuracy)}
@@ -221,23 +214,14 @@ export function PronunciationDrill({
             </div>
           )}
 
-          <p className="text-center text-sm font-semibold text-slate-700 dark:text-slate-300">
-            How did it feel?
-          </p>
-
-          <div className="grid grid-cols-4 gap-2">
-            {(
-              [
-                { grade: 1, label: "Again", emoji: "😓", color: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" },
-                { grade: 2, label: "Hard", emoji: "😤", color: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200" },
-                { grade: 3, label: "Good", emoji: "😊", color: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200" },
-                { grade: 4, label: "Easy", emoji: "🎉", color: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" },
-              ] as const
-            ).map(({ grade, label, emoji, color }) => (
+          <p className="text-center text-sm font-semibold text-ink">How did it feel?</p>
+          <div className="grid grid-cols-4 gap-2.5">
+            {grades.map(({ grade, label, emoji, bg, color }) => (
               <button
                 key={grade}
                 onClick={() => onResult(grade)}
-                className={`flex flex-col items-center gap-1 rounded-xl py-3 px-2 font-semibold text-xs transition hover:opacity-90 active:scale-95 ${color}`}
+                className="flex flex-col items-center gap-1 rounded-2xl px-2 py-3.5 text-[13px] font-bold transition active:scale-95 hover:opacity-80"
+                style={{ background: bg, color }}
               >
                 <span className="text-xl">{emoji}</span>
                 {label}
@@ -247,38 +231,25 @@ export function PronunciationDrill({
         </div>
       )}
 
-      {/* If STT unavailable, show grade buttons immediately */}
       {!sttSupported && state === "idle" && (
-        <div className="w-full flex flex-col gap-3">
-          <div className="grid grid-cols-4 gap-2">
-            {(
-              [
-                { grade: 1, label: "Again", emoji: "😓", color: "bg-red-100 text-red-800" },
-                { grade: 2, label: "Hard", emoji: "😤", color: "bg-orange-100 text-orange-800" },
-                { grade: 3, label: "Good", emoji: "😊", color: "bg-blue-100 text-blue-800" },
-                { grade: 4, label: "Easy", emoji: "🎉", color: "bg-green-100 text-green-800" },
-              ] as const
-            ).map(({ grade, label, emoji, color }) => (
+        <div className="flex w-full flex-col gap-3">
+          <div className="grid grid-cols-4 gap-2.5">
+            {grades.map(({ grade, label, emoji, bg, color }) => (
               <button
                 key={grade}
                 onClick={() => onResult(grade)}
-                className={`flex flex-col items-center gap-1 rounded-xl py-3 px-2 font-semibold text-xs transition hover:opacity-90 active:scale-95 ${color}`}
+                className="flex flex-col items-center gap-1 rounded-2xl px-2 py-3.5 text-[13px] font-bold transition active:scale-95 hover:opacity-80"
+                style={{ background: bg, color }}
               >
                 <span className="text-xl">{emoji}</span>
                 {label}
               </button>
             ))}
           </div>
-          <Button
-            variant="ghost"
-            fullWidth
-            onClick={() => {
-              setState("done");
-            }}
-          >
+          <button onClick={() => setState("done")} className="btn-ghost">
             <CheckCircle className="mr-2 h-4 w-4" />
             Skip to result
-          </Button>
+          </button>
         </div>
       )}
     </div>

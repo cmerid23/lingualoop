@@ -8,13 +8,12 @@ interface ProgressRingProps {
 }
 
 /**
- * Pure-SVG circular progress ring. Used on the home screen to show today's
- * minute target. Keeps zero JS animation libs.
+ * Pure-SVG circular progress ring. Gold accent on a warm surface track.
  */
 export function ProgressRing({
   value,
-  size = 140,
-  stroke = 12,
+  size = 90,
+  stroke = 10,
   label,
   sublabel,
 }: ProgressRingProps) {
@@ -24,34 +23,37 @@ export function ProgressRing({
   const offset = circumference * (1 - clamped);
 
   return (
-    <div className="relative inline-flex items-center justify-center">
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="currentColor"
+          stroke="var(--surface-2)"
           strokeWidth={stroke}
           fill="none"
-          className="text-slate-200 dark:text-slate-800"
         />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="currentColor"
+          stroke="var(--gold)"
           strokeWidth={stroke}
           fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className="text-brand-500 transition-[stroke-dashoffset] duration-500 ease-out"
+          className="transition-[stroke-dashoffset] duration-500 ease-out"
         />
       </svg>
-      <div className="absolute flex flex-col items-center">
-        {label && <span className="text-2xl font-bold">{label}</span>}
+      <div className="absolute flex flex-col items-center text-center">
+        {label && (
+          <span className="font-display text-xl font-bold leading-none text-ink">
+            {label}
+          </span>
+        )}
         {sublabel && (
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="mt-1 text-[10px] font-medium text-ink-3/60">
             {sublabel}
           </span>
         )}

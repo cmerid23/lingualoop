@@ -27,7 +27,6 @@ export function TutorDrawer({
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll the message list as messages arrive
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -51,7 +50,6 @@ export function TutorDrawer({
         level,
         lessonTitle,
       });
-
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (err) {
       console.error("Tutor reply failed", err);
@@ -81,105 +79,110 @@ export function TutorDrawer({
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open tutor"
-        className="fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg transition hover:bg-brand-600 active:scale-95"
+        className="fixed bottom-7 right-7 z-40 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-violet transition hover:scale-110"
+        style={{ background: "linear-gradient(135deg, var(--violet), var(--violet-light))" }}
       >
         <MessageCircle className="h-6 w-6" />
       </button>
 
+      {/* Overlay */}
+      <div
+        className={`fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm transition-opacity duration-300 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        onClick={() => setOpen(false)}
+        aria-hidden
+      />
+
       {/* Drawer */}
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="flex h-1/2 w-full flex-col rounded-t-2xl bg-white shadow-xl dark:bg-slate-900"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-label="Tutor chat"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-brand-500" />
-                <span className="font-semibold">Tutor</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close tutor"
-                className="rounded-full p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      <div
+        role="dialog"
+        aria-label="Tutor chat"
+        className={`fixed bottom-0 right-0 z-50 flex h-[70vh] w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-lift sm:w-[400px] transition-transform duration-300 ${open ? "translate-y-0" : "translate-y-full"}`}
+        style={{ transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+      >
+        {/* Handle */}
+        <div className="mx-auto mt-3.5 h-1 w-10 shrink-0 rounded bg-surface-2" />
 
-            {/* Messages */}
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between border-b border-surface-2 px-6 py-4">
+          <div className="flex items-center gap-3">
             <div
-              ref={listRef}
-              className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+              style={{ background: "linear-gradient(135deg, var(--violet), var(--violet-light))" }}
             >
-              {messages.length === 0 && (
-                <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                  Ask me anything about this lesson.
-                </p>
-              )}
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
-                      m.role === "user"
-                        ? "bg-brand-500 text-white"
-                        : "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
-                    }`}
-                  >
-                    {m.content}
-                  </div>
-                </div>
-              ))}
-              {sending && <TypingIndicator />}
+              <MessageCircle className="h-[18px] w-[18px]" />
             </div>
-
-            {/* Composer */}
-            <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-700">
-              <div className="flex items-end gap-2">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  rows={1}
-                  placeholder="Ask the tutor…"
-                  className="flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => void send()}
-                  disabled={!input.trim() || sending}
-                  aria-label="Send"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 disabled:opacity-40"
-                >
-                  <Send className="h-5 w-5" />
-                </button>
+            <div>
+              <div className="font-display text-base font-semibold leading-tight">
+                Tutor
               </div>
+              <div className="text-xs font-medium text-[#22c55e]">● Online</div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close tutor"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-ink-3 hover:bg-surface-2"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      )}
-    </>
-  );
-}
 
-function TypingIndicator() {
-  return (
-    <div className="flex justify-start">
-      <div className="flex items-center gap-1 rounded-2xl bg-slate-100 px-3 py-3 dark:bg-slate-800">
-        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
-        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
-        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+        {/* Messages */}
+        <div ref={listRef} className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
+          {messages.length === 0 && (
+            <p className="my-8 text-center text-sm text-ink-3">
+              Ask me anything about this lesson.
+            </p>
+          )}
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`max-w-[85%] whitespace-pre-wrap px-4 py-3 text-sm leading-relaxed ${
+                m.role === "user"
+                  ? "self-end rounded-[18px_4px_18px_18px] text-white"
+                  : "self-start rounded-[4px_18px_18px_18px] bg-surface text-ink"
+              }`}
+              style={
+                m.role === "user"
+                  ? { background: "var(--violet)" }
+                  : undefined
+              }
+            >
+              {m.content}
+            </div>
+          ))}
+          {sending && (
+            <div className="flex w-fit gap-1 self-start rounded-[4px_18px_18px_18px] bg-surface px-4 py-3">
+              <span className="h-2 w-2 rounded-full bg-ink-3 animate-typing" style={{ opacity: 0.5 }} />
+              <span className="h-2 w-2 rounded-full bg-ink-3 animate-typing" style={{ animationDelay: "0.2s", opacity: 0.5 }} />
+              <span className="h-2 w-2 rounded-full bg-ink-3 animate-typing" style={{ animationDelay: "0.4s", opacity: 0.5 }} />
+            </div>
+          )}
+        </div>
+
+        {/* Composer */}
+        <div className="flex shrink-0 items-end gap-2.5 border-t border-surface-2 px-6 py-4">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            rows={1}
+            placeholder="Ask the tutor…"
+            className="flex-1 resize-none rounded-full border border-surface-3 bg-surface px-5 py-3 text-sm text-ink outline-none transition focus:border-violet"
+          />
+          <button
+            type="button"
+            onClick={() => void send()}
+            disabled={!input.trim() || sending}
+            aria-label="Send"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition hover:scale-105 disabled:opacity-40"
+            style={{ background: "var(--violet)" }}
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

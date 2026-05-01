@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LinguaLoop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Sora:wght@300;400;500;600&family=Noto+Sans+Ethiopic:wght@400;600&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --ink: #0A0A0F;
+    --ink-2: #1A1A2E;
+    --ink-3: #2D2D4E;
+    --surface: #F5F3EE;
+    --surface-2: #ECEAE3;
+    --surface-3: #E0DDD4;
+    --gold: #C8973A;
+    --gold-light: #F0C96B;
+    --gold-pale: #FBF3E0;
+    --teal: #2EC4B6;
+    --teal-dark: #1A9E92;
+    --coral: #FF6B6B;
+    --violet: #7C3AED;
+    --green: #22C55E;
+    --white: #FFFFFF;
+    --radius: 20px;
+    --radius-sm: 12px;
+    --shadow: 0 4px 24px rgba(10,10,15,0.08);
+    --shadow-lg: 0 12px 48px rgba(10,10,15,0.14);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LAYOUT ── */
+  .app-frame {
+    display: flex;
+    height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 88px;
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 0;
+    gap: 8px;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .logo-mark {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Clash Display', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 20px;
+    letter-spacing: -1px;
+  }
+
+  .nav-item {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: rgba(255,255,255,0.35);
+    font-size: 22px;
+    position: relative;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.7); }
+  .nav-item.active { background: rgba(200,151,58,0.18); color: var(--gold); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    right: -1px;
+    width: 3px;
+    height: 28px;
+    background: var(--gold);
+    border-radius: 2px 0 0 2px;
+  }
+
+  .sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+  /* ── MAIN CONTENT ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; height: 100%; }
+  .screen.active { display: flex; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 36px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--surface-3);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(12px);
+  }
+
+  .topbar-left h1 {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+  }
+  .topbar-left p { font-size: 13px; color: var(--ink-3); margin-top: 2px; font-weight: 300; }
+
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+
+  .streak-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(255,107,53,0.3);
+  }
+
+  .xp-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--gold-pale);
+    color: var(--gold);
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(200,151,58,0.3);
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--violet));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  /* ── HOME SCREEN ── */
+  .home-content { padding: 32px 36px; display: flex; flex-direction: column; gap: 28px; flex: 1; }
+
+  /* Hero pair card */
+  .pair-hero {
+    background: var(--ink);
+    border-radius: 28px;
+    padding: 36px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    min-height: 180px;
+  }
+
+  .pair-hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(200,151,58,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .pair-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: 40%;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(46,196,182,0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .pair-info h2 {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 16px;
+  }
+
+  .pair-langs {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .lang-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 20px;
+    border-radius: 50px;
+  }
+  .lang-pill .flag { font-size: 22px; }
+  .lang-pill .lang-name { color: white; font-weight: 500; font-size: 15px; }
+
+  .pair-arrow {
+    color: var(--gold);
+    font-size: 20px;
+    opacity: 0.8;
+  }
+
+  .pair-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .cta-btn {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--ink);
+    border: none;
+    padding: 14px 28px;
+    border-radius: 50px;
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 6px 24px rgba(200,151,58,0.4);
+    white-space: nowrap;
+  }
+  .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(200,151,58,0.5); }
+
+  .level-badge {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 300;
+  }
+  .level-badge span { color: var(--teal); font-weight: 600; }
+
+  /* ── SECTION GRID ── */
+  .section-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+  }
+
+  .section-grid-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--surface-2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    opacity: 0.5;
+    margin-bottom: 12px;
+  }
+
+  /* Progress ring */
+  .ring-card { display: flex; align-items: center; gap: 20px; }
+  .ring-wrap { position: relative; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .ring-label .big { font-family: 'Clash Display', sans-serif; font-size: 22px; font-weight: 700; color: var(--ink); }
+  .ring-label .sm { font-size: 10px; color: var(--ink-3); opacity: 0.6; font-weight: 500; }
+  .ring-info h3 { font-family: 'Clash Display', sans-serif; font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .ring-info p { font-size: 13px; color: var(--ink-3); line-height: 1.5; font-weight: 300; }
+
+  /* XP card */
+  .xp-bar-wrap { margin-top: 12px; }
+  .xp-bar-track { height: 8px; background: var(--surface-2); border-radius: 50px; overflow: hidden; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 50px; transition: width 1s ease; }
+  .xp-nums { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); margin-top: 6px; font-weight: 500; }
+
+  /* Streak card */
+  .streak-dots { display: flex; gap: 6px; margin-top: 12px; }
+  .streak-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .streak-dot.done { background: linear-gradient(135deg, #FF6B35, #FF8C5A); color: white; }
+  .streak-dot.today { background: var(--gold-pale); color: var(--gold); border: 2px solid var(--gold); }
+  .streak-dot.pending { background: var(--surface-2); color: var(--ink-3); }
+
+  /* Due reviews */
+  .review-card {
+    background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+    border: none;
+    color: white;
+  }
+  .review-card .card-label { color: rgba(255,255,255,0.6); opacity: 1; }
+  .review-card h3 { font-family: 'Clash Display', sans-serif; font-size: 28px; font-weight: 700; }
+  .review-card p { font-size: 13px; opacity: 0.8; margin: 6px 0 16px; font-weight: 300; }
+  .review-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .review-btn:hover { background: rgba(255,255,255,0.3); }
+
+  /* Word of day */
+  .word-card { background: var(--ink-2); border: none; }
+  .word-card .card-label { color: rgba(255,255,255,0.4); opacity: 1; }
+  .word-card .word-tgt {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin: 8px 0 4px;
+  }
+  .word-card .word-translit { font-size: 14px; color: rgba(255,255,255,0.4); font-style: italic; margin-bottom: 8px; }
+  .word-card .word-src { font-size: 15px; color: rgba(255,255,255,0.7); font-weight: 400; }
+  .word-card .play-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(200,151,58,0.2);
+    border: 1px solid rgba(200,151,58,0.4);
+    color: var(--gold-light);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px;
+    position: absolute; top: 24px; right: 24px;
+    transition: all 0.2s;
+  }
+  .word-card .play-btn:hover { background: rgba(200,151,58,0.35); transform: scale(1.1); }
+
+  /* ── LESSON SCREEN ── */
+  .lesson-screen { background: var(--surface); }
+
+  .lesson-topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 20px 36px;
+    border-bottom: 1px solid var(--surface-3);
+  }
+
+  .back-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: white; border: 1px solid var(--surface-3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; color: var(--ink-3);
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .back-btn:hover { background: var(--surface-2); }
+
+  .progress-bar-wrap { flex: 1; }
+  .progress-bar-track { height: 10px; background: var(--surface-2); border-radius: 50px; overflow: hidden; }
+  .progress-bar-fill {
+    height: 100%; border-radius: 50px;
+    background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .progress-count { font-size: 13px; font-weight: 600; color: var(--ink-3); white-space: nowrap; }
+
+  /* Activity type pill */
+  .activity-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: white; border: 1px solid var(--surface-3);
+    padding: 6px 14px; border-radius: 50px;
+    font-size: 12px; font-weight: 600; color: var(--ink-3);
+    letter-spacing: 0.5px;
+    margin: 0 auto 28px;
+    box-shadow: var(--shadow);
+  }
+  .activity-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .lesson-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 36px;
+    max-width: 620px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ── PICTURE ACTIVITY ── */
+  .sketch-frame {
+    width: 200px; height: 200px;
+    background: white;
+    border-radius: 28px;
+    box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 100px;
+    margin-bottom: 32px;
+    border: 2px solid var(--surface-2);
+    position: relative;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .word-display { text-align: center; margin-bottom: 32px; }
+  .word-display .tgt-word {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .word-display .translit {
+    font-size: 16px; color: var(--ink-3); font-style: italic;
+    margin-bottom: 10px; font-weight: 300;
+  }
+  .word-display .src-word {
+    font-size: 15px; color: var(--ink-3); font-weight: 400;
+  }
+
+  .speak-btn {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--ink);
+    border: none; color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(10,10,15,0.2);
+    transition: all 0.2s; margin-bottom: 32px;
+  }
+  .speak-btn:hover { transform: scale(1.08); box-shadow: 0 12px 32px rgba(10,10,15,0.3); }
+  .speak-btn.speaking { animation: pulse-ring 1.2s ease-out infinite; background: var(--teal); }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(46,196,182,0.5); }
+    70% { box-shadow: 0 0 0 20px rgba(46,196,182,0); }
+    100% { box-shadow: 0 0 0 0 rgba(46,196,182,0); }
+  }
+
+  .got-it-btn {
+    width: 100%;
+    background: var(--ink);
+    color: white;
+    border: none;
+    padding: 18px;
+    border-radius: 50px;
+    font-family: 'Sora', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .got-it-btn:hover { background: var(--ink-2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(10,10,15,0.2); }
+
+  /* ── SOUND ACTIVITY ── */
+  .sound-btn {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: var(--ink);
+    border: none; color: white;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; font-size: 38px; cursor: pointer;
+    box-shadow: 0 12px 40px rgba(10,10,15,0.25);
+    transition: all 0.2s; margin-bottom: 32px;
+    position: relative;
+  }
+  .sound-btn::before {
+    content: 'TAP TO HEAR';
+    position: absolute;
+    bottom: -28px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--ink-3);
+    opacity: 0.5;
+  }
+  .sound-btn:hover { transform: scale(1.05); }
+
+  .choices-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .choice-btn {
+    background: white;
+    border: 2px solid var(--surface-2);
+    border-radius: 20px;
+    padding: 20px 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .choice-btn:hover { border-color: var(--ink-3); transform: translateY(-2px); }
+  .choice-btn.correct { border-color: var(--green); background: rgba(34,197,94,0.06); }
+  .choice-btn.wrong { border-color: var(--coral); background: rgba(255,107,107,0.06); }
+  .choice-btn .emoji { font-size: 44px; }
+  .choice-btn .choice-label { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+  /* ── SENTENCE BUILD ── */
+  .sentence-prompt {
+    background: white;
+    border-radius: 20px;
+    padding: 20px 24px;
+    width: 100%;
+    margin-bottom: 20px;
+    border: 1px solid var(--surface-2);
+    box-shadow: var(--shadow);
+  }
+  .sentence-prompt .label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
+  .sentence-prompt .prompt-text { font-size: 18px; font-weight: 500; color: var(--ink); }
+
+  .build-area {
+    min-height: 72px; width: 100%;
+    background: white;
+    border-radius: 20px;
+    border: 2px dashed var(--surface-3);
+    padding: 14px 18px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .build-area.has-words { border-style: solid; border-color: var(--teal); }
+  .build-area.correct { border-color: var(--green); background: rgba(34,197,94,0.04); }
+  .build-area.wrong { border-color: var(--coral); background: rgba(255,107,107,0.04); }
+  .placeholder-text { font-size: 14px; color: var(--ink-3); opacity: 0.4; }
+
+  .word-tile {
+    background: var(--ink);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    animation: pop-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes pop-in { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .word-tile:hover { background: var(--ink-2); transform: scale(1.05); }
+  .word-tile.bank { background: white; color: var(--ink); border: 2px solid var(--surface-2); box-shadow: var(--shadow); }
+  .word-tile.bank:hover { border-color: var(--ink-3); }
+  .word-tile.correct { background: var(--green); }
+  .word-tile.wrong { background: var(--coral); }
+
+  .word-bank-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--ink-3); opacity: 0.4; text-transform: uppercase; width: 100%; margin-bottom: 8px; text-align: center; }
+  .word-bank { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; justify-content: center; margin-bottom: 24px; }
+
+  .check-btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: 50px;
+    border: none;
+    font-family: 'Sora', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface-2);
+    color: var(--ink-3);
+  }
+  .check-btn.ready {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: white;
+    box-shadow: 0 8px 24px rgba(46,196,182,0.35);
+  }
+  .check-btn.ready:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(46,196,182,0.45); }
+
+  /* ── COMPLETE SCREEN ── */
+  .complete-screen {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 36px; text-align: center;
+    background: radial-gradient(ellipse at 50% 0%, rgba(200,151,58,0.08) 0%, transparent 70%);
+  }
+
+  .trophy-wrap {
+    width: 120px; height: 120px;
+    background: linear-gradient(135deg, var(--gold-pale), #FFF8E7);
+    border-radius: 36px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 60px;
+    margin-bottom: 28px;
+    box-shadow: 0 12px 40px rgba(200,151,58,0.2);
+    border: 2px solid rgba(200,151,58,0.2);
+    animation: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes bounce-in { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .complete-screen h1 {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 40px; font-weight: 700;
+    letter-spacing: -1.5px;
+    color: var(--ink); margin-bottom: 10px;
+  }
+  .complete-screen p { font-size: 16px; color: var(--ink-3); font-weight: 300; margin-bottom: 36px; }
+
+  .stats-row { display: flex; gap: 16px; margin-bottom: 36px; }
+  .stat-box {
+    background: white;
+    border-radius: 20px;
+    padding: 20px 28px;
+    border: 1px solid var(--surface-2);
+    box-shadow: var(--shadow);
+    text-align: center;
+    min-width: 100px;
+  }
+  .stat-box .val {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 30px; font-weight: 700; color: var(--ink);
+  }
+  .stat-box .val.gold { color: var(--gold); }
+  .stat-box .val.green { color: var(--green); }
+  .stat-box .lbl { font-size: 12px; color: var(--ink-3); margin-top: 4px; font-weight: 500; }
+
+  /* ── LANGUAGES SCREEN ── */
+  .lang-screen-content { padding: 32px 36px; }
+  .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+
+  .lang-card {
+    background: white;
+    border-radius: 24px;
+    padding: 28px 24px;
+    border: 2px solid var(--surface-2);
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .lang-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 60%, rgba(200,151,58,0.05));
+    pointer-events: none;
+  }
+  .lang-card:hover { border-color: var(--gold); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
+  .lang-card.active { border-color: var(--teal); background: rgba(46,196,182,0.04); }
+  .lang-card.active::after {
+    content: '✓';
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 24px; height: 24px;
+    background: var(--teal);
+    border-radius: 50%;
+    color: white; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .lang-card .flag { font-size: 40px; margin-bottom: 14px; display: block; }
+  .lang-card .lang-n { font-family: 'Clash Display', sans-serif; font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .lang-card .lang-native { font-size: 13px; color: var(--ink-3); margin-bottom: 12px; font-weight: 300; }
+  .lang-card .lang-stats { display: flex; gap: 8px; }
+  .lang-stat-pill {
+    background: var(--surface);
+    border-radius: 50px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+  }
+
+  /* ── TUTOR CHAT ── */
+  .tutor-fab {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, var(--violet), #9F5FE8);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(124,58,237,0.4);
+    transition: all 0.2s; z-index: 100;
+    border: none; color: white;
+  }
+  .tutor-fab:hover { transform: scale(1.1); box-shadow: 0 12px 32px rgba(124,58,237,0.5); }
+
+  .tutor-drawer {
+    position: fixed;
+    bottom: 0; right: 0;
+    width: 400px; height: 70vh;
+    background: white;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -12px 60px rgba(0,0,0,0.15);
+    display: flex; flex-direction: column;
+    z-index: 200;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tutor-drawer.open { transform: translateY(0); }
+
+  .drawer-handle { width: 40px; height: 4px; background: var(--surface-2); border-radius: 2px; margin: 14px auto 0; flex-shrink: 0; }
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--surface-2);
+    flex-shrink: 0;
+  }
+  .drawer-header-left { display: flex; align-items: center; gap: 12px; }
+  .tutor-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--violet), #9F5FE8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: white;
+  }
+  .tutor-name { font-family: 'Clash Display', sans-serif; font-size: 16px; font-weight: 600; }
+  .tutor-status { font-size: 12px; color: var(--green); font-weight: 500; }
+  .close-drawer { background: var(--surface); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; color: var(--ink-3); display: flex; align-items: center; justify-content: center; }
+
+  .chat-messages { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; }
+  .msg.bot { background: var(--surface); color: var(--ink); border-radius: 4px 18px 18px 18px; align-self: flex-start; }
+  .msg.user { background: var(--violet); color: white; border-radius: 18px 4px 18px 18px; align-self: flex-end; }
+
+  .typing-indicator { display: flex; gap: 4px; padding: 12px 16px; background: var(--surface); border-radius: 4px 18px 18px 18px; width: fit-content; }
+  .typing-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); opacity: 0.5; animation: typing 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-4px); opacity: 1; } }
+
+  .chat-input-row {
+    display: flex; gap: 10px; padding: 16px 24px;
+    border-top: 1px solid var(--surface-2);
+    flex-shrink: 0;
+  }
+  .chat-input {
+    flex: 1; background: var(--surface); border: 1px solid var(--surface-3);
+    border-radius: 50px; padding: 12px 18px;
+    font-family: 'Sora', sans-serif; font-size: 14px; color: var(--ink);
+    outline: none; transition: border-color 0.2s;
+  }
+  .chat-input:focus { border-color: var(--violet); }
+  .send-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--violet); border: none; color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer; flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .send-btn:hover { background: #6D28D9; transform: scale(1.05); }
+
+  /* ── OVERLAY ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,10,15,0.3);
+    backdrop-filter: blur(4px);
+    z-index: 150;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .overlay.visible { opacity: 1; pointer-events: all; }
+
+  /* ── CONFETTI ── */
+  .confetti-piece {
+    position: fixed;
+    width: 10px; height: 10px;
+    top: -10px;
+    animation: confetti-fall linear forwards;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 999;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 2px; }
+
+  /* ── TRANSITIONS ── */
+  .screen { animation: screen-in 0.35s ease; }
+  @keyframes screen-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── ONBOARDING ── */
+  .onboard-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px;
+    background: radial-gradient(ellipse at 30% 50%, rgba(200,151,58,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 50%, rgba(46,196,182,0.06) 0%, transparent 60%);
+  }
+
+  .onboard-card {
+    background: white;
+    border-radius: 32px;
+    padding: 48px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--surface-2);
+  }
+
+  .step-dots { display: flex; gap: 6px; margin-bottom: 32px; }
+  .step-dot { height: 4px; border-radius: 2px; background: var(--surface-2); transition: all 0.3s; }
+  .step-dot.active { background: var(--gold); flex: 2; }
+  .step-dot.done { background: var(--teal); }
+
+  .onboard-card h2 {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 28px; font-weight: 700; letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .onboard-card p { font-size: 15px; color: var(--ink-3); font-weight: 300; margin-bottom: 28px; line-height: 1.6; }
+
+  .lang-option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px; border-radius: 16px;
+    border: 2px solid var(--surface-2);
+    margin-bottom: 10px; cursor: pointer;
+    transition: all 0.2s; background: var(--surface);
+  }
+  .lang-option:hover { border-color: var(--ink-3); background: white; }
+  .lang-option.selected { border-color: var(--gold); background: var(--gold-pale); }
+  .lang-option .flag { font-size: 26px; }
+  .lang-option .names { flex: 1; }
+  .lang-option .names .en { font-weight: 600; font-size: 15px; }
+  .lang-option .names .native { font-size: 12px; color: var(--ink-3); margin-top: 2px; font-weight: 300; }
+  .lang-option .badge {
+    font-size: 11px; font-weight: 600; padding: 4px 10px;
+    border-radius: 50px; background: rgba(200,151,58,0.1); color: var(--gold);
+  }
+
+  .onboard-next {
+    width: 100%; padding: 16px;
+    background: var(--ink); color: white;
+    border: none; border-radius: 50px;
+    font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 20px; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .onboard-next:hover { background: var(--ink-2); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .onboard-next:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo-mark">LL</div>
+    <div class="nav-item active" onclick="showScreen('home')" title="Home">🏠</div>
+    <div class="nav-item" onclick="showScreen('lesson')" title="Lessons">📚</div>
+    <div class="nav-item" onclick="showScreen('languages')" title="Languages">🌍</div>
+    <div class="nav-item" onclick="showScreen('review')" title="Review">🔁</div>
+    <div class="sidebar-bottom">
+      <div class="nav-item" onclick="showScreen('onboarding')" title="Settings">⚙️</div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ══ HOME SCREEN ══ -->
+    <div class="screen active" id="screen-home">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1>Good morning, Caleb 👋</h1>
+          <p>You're on a roll — keep the streak alive today</p>
+        </div>
+        <div class="topbar-right">
+          <div class="streak-badge">🔥 12 days</div>
+          <div class="xp-badge">⚡ 3,240 XP</div>
+          <div class="avatar">C</div>
+        </div>
+      </div>
+
+      <div class="home-content">
+        <!-- Hero pair card -->
+        <div class="pair-hero">
+          <div class="pair-info">
+            <h2>Currently learning</h2>
+            <div class="pair-langs">
+              <div class="lang-pill">
+                <span class="flag">🇺🇸</span>
+                <span class="lang-name">English</span>
+              </div>
+              <div class="pair-arrow">→</div>
+              <div class="lang-pill">
+                <span class="flag">🇪🇹</span>
+                <span class="lang-name">Amharic</span>
+              </div>
+            </div>
+          </div>
+          <div class="pair-cta">
+            <button class="cta-btn" onclick="showScreen('lesson')">Continue lesson →</button>
+            <div class="level-badge">CEFR <span>A1</span> · Unit 1 · Lesson 3</div>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="section-grid">
+          <!-- Progress ring -->
+          <div class="card ring-card">
+            <div class="ring-wrap">
+              <svg width="90" height="90">
+                <circle cx="45" cy="45" r="35" stroke="#ECEAE3" stroke-width="10" fill="none"/>
+                <circle cx="45" cy="45" r="35" stroke="#C8973A" stroke-width="10" fill="none"
+                  stroke-dasharray="219.9" stroke-dashoffset="66"
+                  stroke-linecap="round"/>
+              </svg>
+              <div class="ring-label">
+                <span class="big">7</span>
+                <span class="sm">/ 10 min</span>
+              </div>
+            </div>
+            <div class="ring-info">
+              <div class="card-label">Today's goal</div>
+              <h3>Almost there!</h3>
+              <p>3 more minutes to hit your daily target</p>
+            </div>
+          </div>
+
+          <!-- XP level -->
+          <div class="card">
+            <div class="card-label">Level progress</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+              <span style="font-family:'Clash Display',sans-serif;font-size:32px;font-weight:700;">Lv 4</span>
+              <span style="font-size:13px;color:var(--ink-3);font-weight:300;">Scholar</span>
+            </div>
+            <div class="xp-bar-wrap">
+              <div class="xp-bar-track">
+                <div class="xp-bar-fill" style="width:72%"></div>
+              </div>
+              <div class="xp-nums">
+                <span>3,240 XP</span>
+                <span>4,000 XP</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Streak -->
+          <div class="card">
+            <div class="card-label">Weekly streak</div>
+            <div style="font-family:'Clash Display',sans-serif;font-size:13px;font-weight:500;color:var(--ink-3);margin-bottom:8px;">Mon–Sun</div>
+            <div class="streak-dots">
+              <div class="streak-dot done">M</div>
+              <div class="streak-dot done">T</div>
+              <div class="streak-dot done">W</div>
+              <div class="streak-dot done">T</div>
+              <div class="streak-dot today">F</div>
+              <div class="streak-dot pending">S</div>
+              <div class="streak-dot pending">S</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom row -->
+        <div class="section-grid-2">
+          <!-- Due reviews -->
+          <div class="card review-card">
+            <div class="card-label">SRS Review queue</div>
+            <h3>18 words</h3>
+            <p>Ready for review — strike while the iron's hot</p>
+            <button class="review-btn" onclick="showScreen('review')">
+              Start reviewing →
+            </button>
+          </div>
+
+          <!-- Word of day -->
+          <div class="card word-card">
+            <div class="card-label">Word of the day</div>
+            <button class="play-btn" id="playBtn" onclick="toggleSpeak()">🔊</button>
+            <div class="word-tgt">ቤት</div>
+            <div class="word-translit">bet</div>
+            <div class="word-src">🇺🇸 house / home</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LESSON SCREEN ══ -->
+    <div class="screen" id="screen-lesson">
+      <div class="lesson-topbar">
+        <button class="back-btn" onclick="showScreen('home')">←</button>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="lessonProgress" style="width:33%"></div>
+          </div>
+        </div>
+        <div class="progress-count" id="lessonCount">4 / 12</div>
+      </div>
+
+      <!-- Activity 1: Picture Association -->
+      <div id="activity-picture" class="lesson-body">
+        <div style="text-align:center;margin-bottom:16px;">
+          <div class="activity-pill">
+            <div class="activity-dot" style="background:var(--gold)"></div>
+            Picture Association
+          </div>
+        </div>
+        <div class="sketch-frame">🌅</div>
+        <div class="word-display">
+          <div class="tgt-word">እንደምን አደርክ</div>
+          <div class="translit">endemen aderk</div>
+          <div class="src-word">🇺🇸 → Good morning</div>
+        </div>
+        <button class="speak-btn" id="speakBtn1" onclick="toggleSpeak('speakBtn1')">🔊</button>
+        <button class="got-it-btn" onclick="nextActivity()">Got it ✓</button>
+      </div>
+
+      <!-- Activity 2: Sound First (hidden initially) -->
+      <div id="activity-sound" class="lesson-body" style="display:none;">
+        <div style="text-align:center;margin-bottom:16px;">
+          <div class="activity-pill">
+            <div class="activity-dot" style="background:var(--teal)"></div>
+            Listen & Choose
+          </div>
+        </div>
+        <p style="font-size:15px;font-weight:500;color:var(--ink-3);margin-bottom:28px;text-align:center;">Tap the speaker, then pick the correct meaning</p>
+        <button class="sound-btn" onclick="toggleSpeak('soundBtn')">
+          <span>🔊</span>
+        </button>
+        <div style="height:40px"></div>
+        <div class="choices-grid">
+          <button class="choice-btn" onclick="pickChoice(this, false)">
+            <span class="emoji">🌙</span>
+            <span class="choice-label">Good night</span>
+          </button>
+          <button class="choice-btn" onclick="pickChoice(this, true)">
+            <span class="emoji">🌅</span>
+            <span class="choice-label">Good morning</span>
+          </button>
+          <button class="choice-btn" onclick="pickChoice(this, false)">
+            <span class="emoji">👋</span>
+            <span class="choice-label">Goodbye</span>
+          </button>
+          <button class="choice-btn" onclick="pickChoice(this, false)">
+            <span class="emoji">🙏</span>
+            <span class="choice-label">Thank you</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Activity 3: Sentence Build (hidden) -->
+      <div id="activity-sentence" class="lesson-body" style="display:none;">
+        <div style="text-align:center;margin-bottom:16px;">
+          <div class="activity-pill">
+            <div class="activity-dot" style="background:var(--violet)"></div>
+            Build the Sentence
+          </div>
+        </div>
+        <div class="sentence-prompt">
+          <div class="label">Translate to Amharic</div>
+          <div class="prompt-text">How are you?</div>
+        </div>
+        <div class="build-area" id="buildArea">
+          <span class="placeholder-text">Tap words below to build…</span>
+        </div>
+        <div style="display:flex;flex-direction:column;width:100%;gap:16px;margin-bottom:16px;">
+          <div class="word-bank-label">Word bank</div>
+          <div class="word-bank" id="wordBank">
+            <div class="word-tile bank" onclick="addWord(this, 'እንዴት')">እንዴት</div>
+            <div class="word-tile bank" onclick="addWord(this, 'ሰላም')">ሰላም</div>
+            <div class="word-tile bank" onclick="addWord(this, 'ነህ?')">ነህ?</div>
+            <div class="word-tile bank" onclick="addWord(this, 'አዎ')">አዎ</div>
+          </div>
+        </div>
+        <button class="check-btn" id="checkBtn" onclick="checkSentence()">Check answer</button>
+      </div>
+    </div>
+
+    <!-- ══ COMPLETE SCREEN ══ -->
+    <div class="screen" id="screen-complete">
+      <div class="lesson-topbar" style="border-bottom:none;">
+        <button class="back-btn" onclick="showScreen('home')">←</button>
+      </div>
+      <div class="complete-screen">
+        <div class="trophy-wrap">🏆</div>
+        <h1>Lesson Complete!</h1>
+        <p>You crushed it. Your progress has been saved.</p>
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="val gold">+85</div>
+            <div class="lbl">XP earned</div>
+          </div>
+          <div class="stat-box">
+            <div class="val green">91%</div>
+            <div class="lbl">Accuracy</div>
+          </div>
+          <div class="stat-box">
+            <div class="val">12</div>
+            <div class="lbl">Questions</div>
+          </div>
+        </div>
+        <button class="got-it-btn" style="max-width:320px;" onclick="showScreen('home')">Back to home</button>
+      </div>
+    </div>
+
+    <!-- ══ LANGUAGES SCREEN ══ -->
+    <div class="screen" id="screen-languages">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1>Languages</h1>
+          <p>6 languages · 30 bidirectional learning pairs</p>
+        </div>
+      </div>
+      <div class="lang-screen-content">
+        <div class="lang-grid">
+          <div class="lang-card active" onclick="toggleLang(this)">
+            <span class="flag">🇺🇸</span>
+            <div class="lang-n">English</div>
+            <div class="lang-native">English</div>
+            <div class="lang-stats">
+              <div class="lang-stat-pill">🔊 Native TTS</div>
+              <div class="lang-stat-pill">🎙️ STT</div>
+            </div>
+          </div>
+          <div class="lang-card" onclick="toggleLang(this)">
+            <span class="flag">🇪🇸</span>
+            <div class="lang-n">Spanish</div>
+            <div class="lang-native">Español</div>
+            <div class="lang-stats">
+              <div class="lang-stat-pill">🔊 Native TTS</div>
+              <div class="lang-stat-pill">🎙️ STT</div>
+            </div>
+          </div>
+          <div class="lang-card" onclick="toggleLang(this)">
+            <span class="flag">🇫🇷</span>
+            <div class="lang-n">French</div>
+            <div class="lang-native">Français</div>
+            <div class="lang-stats">
+              <div class="lang-stat-pill">🔊 Native TTS</div>
+              <div class="lang-stat-pill">🎙️ STT</div>
+            </div>
+          </div>
+          <div class="lang-card" onclick="toggleLang(this)">
+            <span class="flag">🇸🇦</span>
+            <div class="lang-n">Arabic</div>
+            <div class="lang-native" style="font-family:'Noto Naskh Arabic',sans-serif;">العربية</div>
+            <div class="lang-stats">
+              <div class="lang-stat-pill">🔊 Native TTS</div>
+              <div class="lang-stat-pill">🎙️ STT</div>
+            </div>
+          </div>
+          <div class="lang-card" onclick="toggleLang(this)">
+            <span class="flag">🇪🇹</span>
+            <div class="lang-n">Amharic</div>
+            <div class="lang-native" style="font-family:'Noto Sans Ethiopic',sans-serif;">አማርኛ</div>
+            <div class="lang-stats">
+              <div class="lang-stat-pill">🔊 Chrome TTS</div>
+            </div>
+          </div>
+          <div class="lang-card" onclick="toggleLang(this)">
+            <span class="flag">🇪🇷</span>
+            <div class="lang-n">Tigrinya</div>
+            <div class="lang-native" style="font-family:'Noto Sans Ethiopic',sans-serif;">ትግርኛ</div>
+            <div class="lang-stats">
+              <div class="lang-stat-pill">🔊 Chrome TTS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ REVIEW SCREEN ══ -->
+    <div class="screen" id="screen-review">
+      <div class="lesson-topbar">
+        <button class="back-btn" onclick="showScreen('home')">←</button>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="reviewProgress" style="width:0%;background:linear-gradient(90deg,var(--violet),#9F5FE8)"></div>
+          </div>
+        </div>
+        <div class="progress-count" id="reviewCount">0 / 18</div>
+      </div>
+      <div class="lesson-body" style="gap:20px;">
+        <div style="text-align:center;margin-bottom:0;">
+          <div class="activity-pill">
+            <div class="activity-dot" style="background:var(--violet)"></div>
+            SRS Review
+          </div>
+        </div>
+        <!-- Flip card -->
+        <div id="flipCard" onclick="revealCard()" style="
+          width:100%;background:var(--ink);border-radius:28px;padding:48px 32px;
+          text-align:center;cursor:pointer;transition:all 0.3s;
+          box-shadow:var(--shadow-lg);">
+          <div style="font-size:12px;font-weight:600;letter-spacing:2px;color:rgba(255,255,255,0.3);margin-bottom:20px;">TAP TO REVEAL</div>
+          <div id="cardFront" style="font-family:'Noto Sans Ethiopic',sans-serif;font-size:52px;font-weight:700;color:var(--gold-light);letter-spacing:-1px;line-height:1.1;">አመሰግናለሁ</div>
+          <div id="cardTranslit" style="font-size:16px;color:rgba(255,255,255,0.4);margin-top:8px;font-style:italic;">ameseginalehu</div>
+        </div>
+        <!-- Answer (hidden) -->
+        <div id="cardBack" style="display:none;width:100%;text-align:center;">
+          <div style="font-size:48px;margin-bottom:12px;">🙏</div>
+          <div style="font-size:24px;font-weight:600;color:var(--ink);margin-bottom:6px;">thank you</div>
+          <div style="font-size:14px;color:var(--ink-3);margin-bottom:24px;">🇺🇸 English</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;">
+            <button onclick="gradeCard(1)" style="padding:14px 8px;border-radius:16px;border:none;background:rgba(255,107,107,0.1);color:var(--coral);font-family:'Sora',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,107,107,0.2)'" onmouseout="this.style.background='rgba(255,107,107,0.1)'">😓<br>Again</button>
+            <button onclick="gradeCard(2)" style="padding:14px 8px;border-radius:16px;border:none;background:rgba(255,165,0,0.1);color:#f59e0b;font-family:'Sora',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,165,0,0.2)'" onmouseout="this.style.background='rgba(255,165,0,0.1)'">😤<br>Hard</button>
+            <button onclick="gradeCard(3)" style="padding:14px 8px;border-radius:16px;border:none;background:rgba(46,196,182,0.1);color:var(--teal);font-family:'Sora',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(46,196,182,0.2)'" onmouseout="this.style.background='rgba(46,196,182,0.1)'">😊<br>Good</button>
+            <button onclick="gradeCard(4)" style="padding:14px 8px;border-radius:16px;border:none;background:rgba(34,197,94,0.1);color:var(--green);font-family:'Sora',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.2)'" onmouseout="this.style.background='rgba(34,197,94,0.1)'">🎉<br>Easy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ONBOARDING SCREEN ══ -->
+    <div class="screen" id="screen-onboarding">
+      <div class="onboard-wrap">
+        <div class="onboard-card">
+          <div class="step-dots">
+            <div class="step-dot active" style="flex:3"></div>
+            <div class="step-dot" style="flex:1"></div>
+            <div class="step-dot" style="flex:1"></div>
+            <div class="step-dot" style="flex:1"></div>
+          </div>
+          <h2>What do you speak best?</h2>
+          <p>We'll teach everything in your native language so nothing gets lost in translation.</p>
+          <div class="lang-option selected">
+            <span class="flag">🇺🇸</span>
+            <div class="names">
+              <div class="en">English</div>
+              <div class="native">English</div>
+            </div>
+            <div class="badge">Selected ✓</div>
+          </div>
+          <div class="lang-option" onclick="selectLangOption(this)">
+            <span class="flag">🇪🇸</span>
+            <div class="names">
+              <div class="en">Spanish</div>
+              <div class="native">Español</div>
+            </div>
+          </div>
+          <div class="lang-option" onclick="selectLangOption(this)">
+            <span class="flag">🇸🇦</span>
+            <div class="names">
+              <div class="en">Arabic</div>
+              <div class="native" style="font-family:'Noto Naskh Arabic',sans-serif;direction:rtl;">العربية</div>
+            </div>
+          </div>
+          <div class="lang-option" onclick="selectLangOption(this)">
+            <span class="flag">🇫🇷</span>
+            <div class="names">
+              <div class="en">French</div>
+              <div class="native">Français</div>
+            </div>
+          </div>
+          <div class="lang-option" onclick="selectLangOption(this)">
+            <span class="flag">🇪🇹</span>
+            <div class="names">
+              <div class="en">Amharic</div>
+              <div class="native" style="font-family:'Noto Sans Ethiopic',sans-serif;">አማርኛ</div>
+            </div>
+          </div>
+          <button class="onboard-next" onclick="showScreen('home')">
+            Continue → 
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app-frame -->
+
+<!-- AI Tutor FAB -->
+<button class="tutor-fab" onclick="toggleDrawer()" title="Ask AI Tutor">💬</button>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+<!-- Tutor Drawer -->
+<div class="tutor-drawer" id="tutorDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="tutor-avatar">🤖</div>
+      <div>
+        <div class="tutor-name">AI Tutor</div>
+        <div class="tutor-status">● Online · Amharic expert</div>
+      </div>
+    </div>
+    <button class="close-drawer" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="msg bot">Selam! 👋 I'm your Amharic tutor. Ask me anything — grammar, pronunciation, how to say something, or why a word works the way it does.</div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="Ask anything about Amharic…" onkeydown="if(event.key==='Enter')sendMsg()"/>
+    <button class="send-btn" onclick="sendMsg()">↑</button>
+  </div>
+</div>
+
+<script>
+// ── NAVIGATION ──
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const screenMap = { home: 0, lesson: 1, languages: 2, review: 3, onboarding: 4 };
+  const navItems = document.querySelectorAll('.nav-item');
+
+  document.getElementById('screen-' + name)?.classList.add('active');
+  if (screenMap[name] !== undefined) navItems[screenMap[name]]?.classList.add('active');
+
+  if (name === 'lesson') {
+    resetLesson();
+  }
+}
+
+// ── LESSON FLOW ──
+let currentActivity = 1;
+const totalActivities = 3;
+let builtWords = [];
+
+function resetLesson() {
+  currentActivity = 1;
+  builtWords = [];
+  document.getElementById('activity-picture').style.display = 'flex';
+  document.getElementById('activity-sound').style.display = 'none';
+  document.getElementById('activity-sentence').style.display = 'none';
+  updateLessonProgress();
+}
+
+function updateLessonProgress() {
+  const pct = ((currentActivity - 1) / totalActivities) * 100;
+  document.getElementById('lessonProgress').style.width = pct + '%';
+  document.getElementById('lessonCount').textContent = (currentActivity + 3) + ' / 12';
+}
+
+function nextActivity() {
+  if (currentActivity === 1) {
+    document.getElementById('activity-picture').style.display = 'none';
+    document.getElementById('activity-sound').style.display = 'flex';
+    currentActivity = 2;
+  } else if (currentActivity === 2) {
+    document.getElementById('activity-sound').style.display = 'none';
+    document.getElementById('activity-sentence').style.display = 'flex';
+    currentActivity = 3;
+  } else {
+    showScreen('complete');
+    launchConfetti();
+    return;
+  }
+  updateLessonProgress();
+  document.getElementById('lessonProgress').style.width = ((currentActivity - 1) / totalActivities * 100) + '%';
+}
+
+// ── SPEAK ──
+function toggleSpeak(btnId) {
+  const btn = btnId ? document.getElementById(btnId) : document.getElementById('playBtn');
+  if (!btn) return;
+  btn.classList.toggle('speaking');
+  if (btn.classList.contains('speaking')) {
+    btn.textContent = '⏸';
+    setTimeout(() => { btn.classList.remove('speaking'); btn.textContent = '🔊'; }, 2000);
+  } else {
+    btn.textContent = '🔊';
+  }
+}
+
+// ── CHOICES ──
+function pickChoice(el, correct) {
+  document.querySelectorAll('.choice-btn').forEach(b => b.onclick = null);
+  if (correct) {
+    el.classList.add('correct');
+    setTimeout(nextActivity, 1000);
+  } else {
+    el.classList.add('wrong');
+    document.querySelectorAll('.choice-btn').forEach(b => {
+      if (b !== el) {
+        // Find correct one
+        b.style.opacity = '0.4';
+      }
+    });
+    setTimeout(nextActivity, 1400);
+  }
+}
+
+// ── SENTENCE BUILD ──
+function addWord(el, word) {
+  if (el.style.opacity === '0.3') return;
+  el.style.opacity = '0.3';
+  el.style.pointerEvents = 'none';
+  builtWords.push({ word, el });
+  const area = document.getElementById('buildArea');
+  const placeholder = area.querySelector('.placeholder-text');
+  if (placeholder) placeholder.remove();
+  area.classList.add('has-words');
+  const tile = document.createElement('div');
+  tile.className = 'word-tile';
+  tile.textContent = word;
+  tile.onclick = () => removeWord(tile, el, word);
+  area.appendChild(tile);
+  const checkBtn = document.getElementById('checkBtn');
+  checkBtn.classList.add('ready');
+}
+
+function removeWord(tile, bankEl, word) {
+  tile.remove();
+  bankEl.style.opacity = '';
+  bankEl.style.pointerEvents = '';
+  builtWords = builtWords.filter(w => w.word !== word);
+  const area = document.getElementById('buildArea');
+  if (area.children.length === 0) {
+    area.classList.remove('has-words');
+    const ph = document.createElement('span');
+    ph.className = 'placeholder-text';
+    ph.textContent = 'Tap words below to build…';
+    area.appendChild(ph);
+    document.getElementById('checkBtn').classList.remove('ready');
+  }
+}
+
+function checkSentence() {
+  const answer = builtWords.map(w => w.word).join(' ');
+  const correct = 'እንዴት ነህ?';
+  const area = document.getElementById('buildArea');
+  const tiles = area.querySelectorAll('.word-tile');
+  if (answer === correct) {
+    area.classList.add('correct');
+    tiles.forEach(t => t.classList.add('correct'));
+    setTimeout(() => { showScreen('complete'); launchConfetti(); }, 900);
+  } else {
+    area.classList.add('wrong');
+    tiles.forEach(t => t.classList.add('wrong'));
+    setTimeout(() => {
+      area.classList.remove('wrong', 'has-words');
+      area.innerHTML = '<span class="placeholder-text">Tap words below to build…</span>';
+      document.querySelectorAll('.word-tile.bank').forEach(b => { b.style.opacity=''; b.style.pointerEvents=''; });
+      builtWords = [];
+      document.getElementById('checkBtn').classList.remove('ready');
+    }, 1200);
+  }
+}
+
+// ── REVIEW ──
+let reviewDone = 0;
+const reviewTotal = 18;
+
+function revealCard() {
+  document.getElementById('flipCard').style.display = 'none';
+  document.getElementById('cardBack').style.display = 'block';
+}
+
+function gradeCard(grade) {
+  reviewDone++;
+  const pct = (reviewDone / reviewTotal) * 100;
+  document.getElementById('reviewProgress').style.width = pct + '%';
+  document.getElementById('reviewCount').textContent = reviewDone + ' / ' + reviewTotal;
+  if (reviewDone >= reviewTotal) {
+    showScreen('complete');
+    launchConfetti();
+    return;
+  }
+  document.getElementById('flipCard').style.display = 'block';
+  document.getElementById('cardBack').style.display = 'none';
+}
+
+// ── LANGUAGES ──
+function toggleLang(el) {
+  el.classList.toggle('active');
+}
+
+// ── ONBOARDING ──
+function selectLangOption(el) {
+  document.querySelectorAll('.lang-option').forEach(o => {
+    o.classList.remove('selected');
+    const badge = o.querySelector('.badge');
+    if (badge) badge.remove();
+  });
+  el.classList.add('selected');
+  const badge = document.createElement('div');
+  badge.className = 'badge';
+  badge.textContent = 'Selected ✓';
+  el.appendChild(badge);
+}
+
+// ── TUTOR DRAWER ──
+function toggleDrawer() {
+  const drawer = document.getElementById('tutorDrawer');
+  const overlay = document.getElementById('overlay');
+  drawer.classList.toggle('open');
+  overlay.classList.toggle('visible');
+  if (drawer.classList.contains('open')) {
+    setTimeout(() => document.getElementById('chatInput').focus(), 400);
+  }
+}
+
+function closeDrawer() {
+  document.getElementById('tutorDrawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('visible');
+}
+
+const tutorReplies = [
+  "Great question! In Amharic, verbs go at the end of the sentence — so 'I eat bread' becomes 'I bread eat' (እኔ ዳቦ እበላለሁ). It takes some getting used to but becomes natural quickly!",
+  "The word ሰላም (selam) actually means both 'hello' and 'peace' — it comes from the same Arabic root as 'salaam'. It's a beautiful greeting with a deeper meaning.",
+  "For pronunciation, the Amharic ጠ sound doesn't exist in English — it's like a 't' but pushed from the back of your throat. Try saying 't' while tensing your throat muscles.",
+  "Amharic uses the Geʽez script, one of the oldest writing systems still in use. Each character represents a consonant + vowel combination — there are about 231 base characters!",
+];
+let replyIdx = 0;
+
+function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const messages = document.getElementById('chatMessages');
+  const userMsg = document.createElement('div');
+  userMsg.className = 'msg user';
+  userMsg.textContent = msg;
+  messages.appendChild(userMsg);
+  input.value = '';
+  const typing = document.createElement('div');
+  typing.className = 'typing-indicator';
+  typing.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  messages.appendChild(typing);
+  messages.scrollTop = messages.scrollHeight;
+  setTimeout(() => {
+    typing.remove();
+    const botMsg = document.createElement('div');
+    botMsg.className = 'msg bot';
+    botMsg.textContent = tutorReplies[replyIdx % tutorReplies.length];
+    replyIdx++;
+    messages.appendChild(botMsg);
+    messages.scrollTop = messages.scrollHeight;
+  }, 1400);
+}
+
+// ── CONFETTI ──
+function launchConfetti() {
+  const colors = ['#C8973A','#F0C96B','#2EC4B6','#FF6B6B','#7C3AED','#22C55E'];
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const c = document.createElement('div');
+      c.className = 'confetti-piece';
+      c.style.cssText = `
+        left: ${Math.random() * 100}vw;
+        background: ${colors[Math.floor(Math.random() * colors.length)]};
+        width: ${6 + Math.random() * 10}px;
+        height: ${6 + Math.random() * 10}px;
+        border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+        animation-duration: ${2 + Math.random() * 2}s;
+        animation-delay: ${Math.random() * 0.5}s;
+      `;
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4000);
+    }, i * 30);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Briefcase, Heart, Plane, Smile, Trophy } from "lucide-react";
-import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import {
   ALL_LANG_CODES,
   LANGUAGES,
@@ -69,23 +67,28 @@ export function Onboarding() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-8">
-      {/* Step indicator */}
-      <div className="mb-6 flex items-center gap-2">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className={`h-1.5 flex-1 rounded-full ${
-              i <= step ? "bg-brand-500" : "bg-slate-200 dark:bg-slate-800"
-            }`}
-          />
-        ))}
-      </div>
+    <div
+      className="flex min-h-screen items-center justify-center px-6 py-10"
+      style={{
+        background:
+          "radial-gradient(ellipse at 30% 50%, rgba(200,151,58,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(46,196,182,0.06) 0%, transparent 60%), var(--surface)",
+      }}
+    >
+      <div className="w-full max-w-[520px] rounded-[32px] border border-surface-2 bg-white p-12 shadow-lift">
+        {/* Step dots */}
+        <div className="mb-8 flex items-center gap-1.5">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className={`h-1 rounded transition-all duration-300 ${
+                i === step ? "bg-gold" : i < step ? "bg-teal" : "bg-surface-2"
+              }`}
+              style={{ flex: i === step ? 2 : 1 }}
+            />
+          ))}
+        </div>
 
-      <div className="flex-1">
-        {step === 0 && (
-          <StepNative selected={native} onSelect={setNative} />
-        )}
+        {step === 0 && <StepNative selected={native} onSelect={setNative} />}
         {step === 1 && native && (
           <StepTarget
             selected={target}
@@ -93,34 +96,79 @@ export function Onboarding() {
             onSelect={setTarget}
           />
         )}
-        {step === 2 && (
-          <StepGoal selected={goal} onSelect={setGoal} />
-        )}
-        {step === 3 && (
-          <StepMinutes selected={minutes} onSelect={setMinutes} />
-        )}
-      </div>
+        {step === 2 && <StepGoal selected={goal} onSelect={setGoal} />}
+        {step === 3 && <StepMinutes selected={minutes} onSelect={setMinutes} />}
 
-      <div className="mt-6 flex items-center justify-between gap-3">
-        {step > 0 ? (
-          <Button variant="ghost" onClick={back}>
-            <ArrowLeft className="mr-1 h-4 w-4" /> Back
-          </Button>
-        ) : (
-          <span />
-        )}
-        <Button onClick={next} disabled={!canNext}>
-          {step === 3 ? "Start learning" : "Next"}
-          <ArrowRight className="ml-1 h-4 w-4" />
-        </Button>
+        <div className="mt-6 flex items-center justify-between gap-3">
+          {step > 0 ? (
+            <button onClick={back} className="btn-ghost">
+              <ArrowLeft className="mr-1 h-4 w-4" /> Back
+            </button>
+          ) : (
+            <span />
+          )}
+          <button
+            onClick={next}
+            disabled={!canNext}
+            className="btn-primary"
+          >
+            {step === 3 ? "Start learning" : "Next"}
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// -----------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
 // Steps
-// -----------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LangOption({
+  flag,
+  name,
+  native,
+  scriptCls,
+  selected,
+  badge,
+  onClick,
+}: {
+  flag: string;
+  name: string;
+  native: string;
+  scriptCls: string;
+  selected: boolean;
+  badge?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`mb-2.5 flex w-full items-center gap-3.5 rounded-2xl border-2 px-5 py-4 text-left transition ${
+        selected
+          ? "border-gold bg-gold-pale"
+          : "border-surface-2 bg-surface hover:border-ink-3 hover:bg-white"
+      }`}
+    >
+      <span className="text-[26px]" aria-hidden>{flag}</span>
+      <div className="flex-1">
+        <div className="text-[15px] font-semibold">{name}</div>
+        <div className={`mt-0.5 text-xs font-light text-ink-3 ${scriptCls}`}>{native}</div>
+      </div>
+      {selected && (
+        <span className="rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-semibold text-gold">
+          Selected ✓
+        </span>
+      )}
+      {!selected && badge && (
+        <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-ink-3">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
 
 function StepNative({
   selected,
@@ -131,37 +179,24 @@ function StepNative({
 }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Welcome to LinguaLoop</h1>
-      <p className="mt-2 text-slate-600 dark:text-slate-400">
-        Which language do you speak best? We'll teach in this language.
+      <h2 className="font-display text-[28px] font-bold leading-tight">What do you speak best?</h2>
+      <p className="mt-2 mb-7 text-[15px] font-light leading-relaxed text-ink-3">
+        We'll teach everything in your native language so nothing gets lost in translation.
       </p>
-      <div className="mt-6 grid gap-3">
-        {ALL_LANG_CODES.map((code) => {
-          const meta = LANGUAGES[code];
-          const isSel = selected === code;
-          return (
-            <button
-              key={code}
-              onClick={() => onSelect(code)}
-              className={`card flex items-center gap-4 text-left transition ${
-                isSel ? "ring-2 ring-brand-500" : "hover:ring-brand-200"
-              }`}
-            >
-              <span className="text-3xl" aria-hidden>
-                {meta.flag}
-              </span>
-              <div>
-                <div className="font-semibold">{meta.name}</div>
-                <div
-                  className={`text-sm text-slate-500 dark:text-slate-400 ${scriptClass(code)}`}
-                >
-                  {meta.nativeName}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {ALL_LANG_CODES.map((code) => {
+        const meta = LANGUAGES[code];
+        return (
+          <LangOption
+            key={code}
+            flag={meta.flag}
+            name={meta.name}
+            native={meta.nativeName}
+            scriptCls={scriptClass(code)}
+            selected={selected === code}
+            onClick={() => onSelect(code)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -177,42 +212,25 @@ function StepTarget({
 }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold">What do you want to learn?</h1>
-      <p className="mt-2 text-slate-600 dark:text-slate-400">
+      <h2 className="font-display text-[28px] font-bold leading-tight">What do you want to learn?</h2>
+      <p className="mt-2 mb-7 text-[15px] font-light leading-relaxed text-ink-3">
         Pick the language you're studying. You can switch later.
       </p>
-      <div className="mt-6 grid gap-3">
-        {options.map((code) => {
-          const meta = LANGUAGES[code];
-          const isSel = selected === code;
-          return (
-            <button
-              key={code}
-              onClick={() => onSelect(code)}
-              className={`card flex items-center gap-4 text-left transition ${
-                isSel ? "ring-2 ring-brand-500" : "hover:ring-brand-200"
-              }`}
-            >
-              <span className="text-3xl" aria-hidden>
-                {meta.flag}
-              </span>
-              <div className="flex-1">
-                <div className="font-semibold">{meta.name}</div>
-                <div
-                  className={`text-sm text-slate-500 dark:text-slate-400 ${scriptClass(code)}`}
-                >
-                  {meta.nativeName}
-                </div>
-              </div>
-              {!meta.ttsReliable && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                  Best on Chrome
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {options.map((code) => {
+        const meta = LANGUAGES[code];
+        return (
+          <LangOption
+            key={code}
+            flag={meta.flag}
+            name={meta.name}
+            native={meta.nativeName}
+            scriptCls={scriptClass(code)}
+            selected={selected === code}
+            badge={!meta.ttsReliable ? "Best on Chrome" : undefined}
+            onClick={() => onSelect(code)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -226,34 +244,40 @@ function StepGoal({
 }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold">What's your goal?</h1>
-      <p className="mt-2 text-slate-600 dark:text-slate-400">
+      <h2 className="font-display text-[28px] font-bold leading-tight">What's your goal?</h2>
+      <p className="mt-2 mb-7 text-[15px] font-light leading-relaxed text-ink-3">
         We'll tailor lessons to fit it.
       </p>
-      <div className="mt-6 grid gap-3">
-        {GOALS.map(({ value, label, sub, icon: Icon }) => {
-          const isSel = selected === value;
-          return (
-            <button
-              key={value}
-              onClick={() => onSelect(value)}
-              className={`card flex items-center gap-4 text-left transition ${
-                isSel ? "ring-2 ring-brand-500" : "hover:ring-brand-200"
-              }`}
+      {GOALS.map(({ value, label, sub, icon: Icon }) => {
+        const isSel = selected === value;
+        return (
+          <button
+            key={value}
+            onClick={() => onSelect(value)}
+            className={`mb-2.5 flex w-full items-center gap-3.5 rounded-2xl border-2 px-5 py-4 text-left transition ${
+              isSel
+                ? "border-gold bg-gold-pale"
+                : "border-surface-2 bg-surface hover:border-ink-3 hover:bg-white"
+            }`}
+          >
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+              style={{
+                background: isSel
+                  ? "rgba(200,151,58,0.2)"
+                  : "var(--surface-2)",
+                color: isSel ? "var(--gold)" : "var(--ink-3)",
+              }}
             >
-              <div className="rounded-xl bg-brand-100 p-3 text-brand-700 dark:bg-brand-900 dark:text-brand-200">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="font-semibold">{label}</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  {sub}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+              <Icon className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="text-[15px] font-semibold">{label}</div>
+              <div className="mt-0.5 text-xs font-light text-ink-3">{sub}</div>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -267,41 +291,42 @@ function StepMinutes({
 }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold">How much time per day?</h1>
-      <p className="mt-2 text-slate-600 dark:text-slate-400">
+      <h2 className="font-display text-[28px] font-bold leading-tight">How much time per day?</h2>
+      <p className="mt-2 mb-7 text-[15px] font-light leading-relaxed text-ink-3">
         Consistency beats intensity. Pick something you'll actually do.
       </p>
-      <div className="mt-6 grid gap-3">
-        {MINUTES.map((m) => {
-          const isSel = selected === m;
-          return (
-            <button
-              key={m}
-              onClick={() => onSelect(m)}
-              className={`card flex items-center justify-between text-left transition ${
-                isSel ? "ring-2 ring-brand-500" : "hover:ring-brand-200"
-              }`}
-            >
-              <div>
-                <div className="font-semibold">{m} minutes</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  {m === 5
-                    ? "Casual — one quick lesson"
-                    : m === 10
-                      ? "Steady — recommended for most"
-                      : "Serious — measurable progress fast"}
-                </div>
+      {MINUTES.map((m) => {
+        const isSel = selected === m;
+        return (
+          <button
+            key={m}
+            onClick={() => onSelect(m)}
+            className={`mb-2.5 flex w-full items-center justify-between rounded-2xl border-2 px-5 py-4 text-left transition ${
+              isSel
+                ? "border-gold bg-gold-pale"
+                : "border-surface-2 bg-surface hover:border-ink-3 hover:bg-white"
+            }`}
+          >
+            <div>
+              <div className="text-[15px] font-semibold">{m} minutes</div>
+              <div className="mt-0.5 text-xs font-light text-ink-3">
+                {m === 5
+                  ? "Casual — one quick lesson"
+                  : m === 10
+                    ? "Steady — recommended for most"
+                    : "Serious — measurable progress fast"}
               </div>
-              <div className="text-2xl font-bold text-brand-500">{m}m</div>
-            </button>
-          );
-        })}
+            </div>
+            <div className="font-display text-[24px] font-bold text-gold">{m}m</div>
+          </button>
+        );
+      })}
+      <div
+        className="mt-5 rounded-2xl px-5 py-3 text-sm font-light"
+        style={{ background: "var(--gold-pale)", color: "var(--gold)" }}
+      >
+        You can change all of these any time from settings.
       </div>
-      <Card className="mt-6 bg-brand-50 ring-brand-200 dark:bg-brand-950 dark:ring-brand-800">
-        <p className="text-sm text-brand-800 dark:text-brand-200">
-          You can change all of these any time from settings.
-        </p>
-      </Card>
     </div>
   );
 }

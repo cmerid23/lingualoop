@@ -1,7 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
-import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import {
   LANGUAGES,
   scriptClass,
@@ -17,7 +15,6 @@ export function SettingsPage() {
   const save = useSettingsStore((s) => s.save);
 
   if (!settings) return null;
-  // Lock in a non-null reference so closures stay typed correctly.
   const cur = settings;
 
   async function changeTarget(target: LangCode) {
@@ -34,98 +31,126 @@ export function SettingsPage() {
     location.href = "/";
   }
 
+  const targets = targetOptions(cur.nativeLang);
+
   return (
-    <AppShell title="Settings">
-      <Card className="mb-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Native language
-        </h2>
-        <div className="mt-2 flex items-center gap-3">
-          <span className="text-2xl">{LANGUAGES[settings.nativeLang].flag}</span>
-          <div>
-            <div className="font-semibold">
-              {LANGUAGES[settings.nativeLang].name}
-            </div>
-            <div
-              className={`text-sm text-slate-500 dark:text-slate-400 ${scriptClass(settings.nativeLang)}`}
-            >
-              {LANGUAGES[settings.nativeLang].nativeName}
+    <AppShell title="Languages">
+      <div className="px-6 py-8 lg:px-9">
+        {/* ── Native language card (read-only summary) ── */}
+        <div className="card mb-6">
+          <div className="card-label">Native language</div>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-3xl">{LANGUAGES[cur.nativeLang].flag}</span>
+            <div>
+              <div className="font-display text-lg font-semibold">
+                {LANGUAGES[cur.nativeLang].name}
+              </div>
+              <div className={`text-sm font-light text-ink-3 ${scriptClass(cur.nativeLang)}`}>
+                {LANGUAGES[cur.nativeLang].nativeName}
+              </div>
             </div>
           </div>
+          <p className="mt-3 text-xs font-light text-ink-3">
+            Changing this requires resetting — for now use Reset below.
+          </p>
         </div>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          Changing this is a Phase 2 feature — for now, reset below to switch.
-        </p>
-      </Card>
 
-      <Card className="mb-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Target language
-        </h2>
-        <div className="mt-3 grid gap-2">
-          {targetOptions(settings.nativeLang).map((meta) => {
-            const isSel = meta.code === settings.targetLang;
+        {/* ── Target language grid (lang-card style) ── */}
+        <h2 className="card-label mb-3">Target language</h2>
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {targets.map((meta) => {
+            const isSel = meta.code === cur.targetLang;
             return (
               <button
                 key={meta.code}
                 onClick={() => changeTarget(meta.code)}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left transition ${
+                className={`group relative overflow-hidden rounded-3xl border-2 bg-white p-6 text-left transition hover:-translate-y-1 hover:shadow-soft ${
                   isSel
-                    ? "bg-brand-50 ring-2 ring-brand-500 dark:bg-brand-950"
-                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                    ? "border-teal"
+                    : "border-surface-2 hover:border-gold"
                 }`}
+                style={
+                  isSel
+                    ? { background: "rgba(46,196,182,0.04)" }
+                    : undefined
+                }
               >
-                <span className="text-xl">{meta.flag}</span>
-                <span className="flex-1 font-medium">{meta.name}</span>
-                <span
-                  className={`text-sm text-slate-500 dark:text-slate-400 ${scriptClass(meta.code)}`}
-                >
-                  {meta.nativeName}
-                </span>
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, transparent 60%, rgba(200,151,58,0.05))",
+                  }}
+                />
+                {isSel && (
+                  <span
+                    className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold text-white"
+                    style={{ background: "var(--teal)" }}
+                  >
+                    ✓
+                  </span>
+                )}
+                <span className="relative block text-[40px]">{meta.flag}</span>
+                <div className="relative mt-3.5">
+                  <div className="font-display text-lg font-semibold">{meta.name}</div>
+                  <div className={`mt-1 text-[13px] font-light text-ink-3 ${scriptClass(meta.code)}`}>
+                    {meta.nativeName}
+                  </div>
+                </div>
+                <div className="relative mt-3 flex flex-wrap gap-1.5">
+                  <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-3">
+                    🔊 {meta.ttsReliable ? "Native TTS" : "Chrome TTS"}
+                  </span>
+                  {meta.sttReliable && (
+                    <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-3">
+                      🎙️ STT
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
-      </Card>
 
-      <Card className="mb-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Daily goal
-        </h2>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {([5, 10, 20] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => changeMinutes(m)}
-              className={`rounded-xl px-3 py-3 font-semibold transition ${
-                settings.dailyMinutes === m
-                  ? "bg-brand-500 text-white"
-                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
-              }`}
-            >
-              {m} min
+        {/* ── Daily goal ── */}
+        <h2 className="card-label mb-3">Daily goal</h2>
+        <div className="mb-6 grid grid-cols-3 gap-3">
+          {([5, 10, 20] as const).map((m) => {
+            const isSel = cur.dailyMinutes === m;
+            return (
+              <button
+                key={m}
+                onClick={() => changeMinutes(m)}
+                className={`rounded-2xl px-4 py-5 text-center font-bold transition ${
+                  isSel
+                    ? "bg-ink text-white shadow-soft"
+                    : "bg-white border border-surface-2 text-ink hover:border-ink-3"
+                }`}
+              >
+                <div className="font-display text-2xl">{m}</div>
+                <div className="mt-1 text-[11px] font-medium uppercase tracking-wider opacity-70">min/day</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Reset ── */}
+        <div className="card">
+          <div className="card-label">Reset</div>
+          <p className="mt-2 text-sm font-light text-ink-3">
+            This erases all your local progress and starts fresh. There's no
+            cloud backup yet.
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button onClick={() => navigate(-1)} className="btn-ghost">
+              Back
             </button>
-          ))}
+            <button onClick={resetAll} className="btn-danger">
+              Reset everything
+            </button>
+          </div>
         </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          Reset
-        </h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          This erases all your local progress and starts fresh. There's no cloud
-          backup yet.
-        </p>
-        <div className="mt-3 flex gap-2">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            Back
-          </Button>
-          <Button variant="danger" onClick={resetAll}>
-            Reset everything
-          </Button>
-        </div>
-      </Card>
+      </div>
     </AppShell>
   );
 }
