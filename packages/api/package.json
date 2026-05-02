@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc && node -e \"require('fs').cpSync('src/db','dist/db',{recursive:true})\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed-curriculum": "tsx src/scripts/seedCurriculum.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

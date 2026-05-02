@@ -12,6 +12,13 @@ import { useSettingsStore } from "../store/settingsStore";
 
 type Goal = "travel" | "heritage" | "work" | "exam" | "fun";
 type Minutes = 5 | 10 | 20;
+type Level = "A1" | "A2" | "B1";
+
+const LEVELS: { value: Level; label: string; sub: string }[] = [
+  { value: "A1", label: "Beginner", sub: "Just starting out — greetings, numbers, basics." },
+  { value: "A2", label: "Elementary", sub: "Some words and phrases — daily life and travel." },
+  { value: "B1", label: "Intermediate", sub: "Comfortable conversations — opinions, plans, stories." },
+];
 
 const GOALS: { value: Goal; label: string; sub: string; icon: typeof Plane }[] = [
   { value: "travel", label: "Travel", sub: "Get around comfortably abroad.", icon: Plane },
@@ -30,6 +37,7 @@ export function Onboarding() {
   const [step, setStep] = useState(0);
   const [native, setNative] = useState<LangCode | null>(null);
   const [target, setTarget] = useState<LangCode | null>(null);
+  const [level, setLevel] = useState<Level | null>(null);
   const [goal, setGoal] = useState<Goal | null>(null);
   const [minutes, setMinutes] = useState<Minutes | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -43,11 +51,15 @@ export function Onboarding() {
   const canNext =
     (step === 0 && native !== null) ||
     (step === 1 && target !== null) ||
-    (step === 2 && goal !== null) ||
-    (step === 3 && minutes !== null);
+    (step === 2 && level !== null) ||
+    (step === 3 && goal !== null) ||
+    (step === 4 && minutes !== null);
+
+  const TOTAL_STEPS = 5;
+  const FINAL_STEP = TOTAL_STEPS - 1;
 
   async function finish() {
-    if (!native || !target || !goal || !minutes) {
+    if (!native || !target || !level || !goal || !minutes) {
       setError("Pick an option for every step before continuing.");
       return;
     }
@@ -59,7 +71,7 @@ export function Onboarding() {
         targetLang: target,
         goal,
         dailyMinutes: minutes,
-        cefrLevel: "A1",
+        cefrLevel: level,
       });
       navigate("/home", { replace: true });
     } catch (err) {
@@ -74,7 +86,7 @@ export function Onboarding() {
   }
 
   function next() {
-    if (step === 3) {
+    if (step === FINAL_STEP) {
       void finish();
       return;
     }
@@ -97,7 +109,7 @@ export function Onboarding() {
       <div className="w-full max-w-[520px] rounded-[32px] border border-surface-2 bg-white p-12 shadow-lift">
         {/* Step dots */}
         <div className="mb-8 flex items-center gap-1.5">
-          {[0, 1, 2, 3].map((i) => (
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
               className={`h-1 rounded transition-all duration-300 ${
@@ -116,8 +128,9 @@ export function Onboarding() {
             onSelect={setTarget}
           />
         )}
-        {step === 2 && <StepGoal selected={goal} onSelect={setGoal} />}
-        {step === 3 && <StepMinutes selected={minutes} onSelect={setMinutes} />}
+        {step === 2 && <StepLevel selected={level} onSelect={setLevel} />}
+        {step === 3 && <StepGoal selected={goal} onSelect={setGoal} />}
+        {step === 4 && <StepMinutes selected={minutes} onSelect={setMinutes} />}
 
         {error && (
           <div
@@ -141,7 +154,7 @@ export function Onboarding() {
             disabled={!canNext || submitting}
             className="btn-primary"
           >
-            {step === 3 ? "Start learning" : "Next"}
+            {step === FINAL_STEP ? "Start learning" : "Next"}
             <ArrowRight className="ml-1 h-4 w-4" />
           </button>
         </div>
@@ -258,6 +271,46 @@ function StepTarget({
             badge={!meta.ttsReliable ? "Best on Chrome" : undefined}
             onClick={() => onSelect(code)}
           />
+        );
+      })}
+    </div>
+  );
+}
+
+function StepLevel({
+  selected,
+  onSelect,
+}: {
+  selected: Level | null;
+  onSelect: (l: Level) => void;
+}) {
+  return (
+    <div>
+      <h2 className="font-display text-[28px] font-bold leading-tight">
+        Where are you starting?
+      </h2>
+      <p className="mt-2 mb-7 text-[15px] font-light leading-relaxed text-ink-3">
+        Pick the level you feel comfortable starting at. You can browse the
+        full curriculum and jump around any time.
+      </p>
+      {LEVELS.map(({ value, label, sub }) => {
+        const isSel = selected === value;
+        return (
+          <button
+            key={value}
+            onClick={() => onSelect(value)}
+            className={`mb-2.5 flex w-full items-center justify-between gap-3.5 rounded-2xl border-2 px-5 py-4 text-left transition ${
+              isSel
+                ? "border-gold bg-gold-pale"
+                : "border-surface-2 bg-surface hover:border-ink-3 hover:bg-white"
+            }`}
+          >
+            <div>
+              <div className="text-[15px] font-semibold">{label}</div>
+              <div className="mt-0.5 text-xs font-light text-ink-3">{sub}</div>
+            </div>
+            <div className="font-display text-[24px] font-bold text-gold">{value}</div>
+          </button>
         );
       })}
     </div>

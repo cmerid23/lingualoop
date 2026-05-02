@@ -8,6 +8,7 @@ import { LoginPage } from "./LoginPage";
 import { RegisterPage } from "./RegisterPage";
 import { PricingPage } from "./PricingPage";
 import { ReviewSession } from "./ReviewSession";
+import { CurriculumPage } from "./CurriculumPage";
 import { AdminDashboard } from "./admin/AdminDashboard";
 import { AdminLogin } from "./admin/AdminLogin";
 import { useSettingsStore } from "../store/settingsStore";
@@ -112,6 +113,14 @@ export function AppRoutes() {
         element={
           <RequireOnboarded>
             <LessonRunner />
+          </RequireOnboarded>
+        }
+      />
+      <Route
+        path="/curriculum"
+        element={
+          <RequireOnboarded>
+            <CurriculumPage />
           </RequireOnboarded>
         }
       />

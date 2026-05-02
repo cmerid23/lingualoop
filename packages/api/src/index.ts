@@ -2,7 +2,7 @@ import "dotenv/config";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import express, { type Request, type Response } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 import Anthropic from "@anthropic-ai/sdk";
 import {
@@ -104,6 +104,36 @@ function buildLessonUserPrompt(
 
 function lessonId(pair: string, unit: number, lessonNum: number, schemaVersion = 1): string {
   return `${pair}:${unit}:${lessonNum}:v${schemaVersion}`;
+}
+
+/**
+ * If the requested lesson is already cached server-side, return it
+ * without calling Claude or decrementing the user's daily quota. Runs
+ * before requireAuth → checkLimit so curriculum lessons stay free.
+ */
+async function returnCachedLessonOrNext(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (!pool || !req.body) return next();
+  const { pair, unit, lessonNum } = req.body;
+  if (!pair || unit == null || lessonNum == null) return next();
+  try {
+    const id = lessonId(pair, unit, lessonNum, 1);
+    const result = await pool.query<{ data: unknown }>(
+      `SELECT data FROM lessons WHERE id = $1`,
+      [id],
+    );
+    if (result.rows[0]) {
+      res.json(result.rows[0].data);
+      return;
+    }
+    next();
+  } catch (err) {
+    console.warn("Lesson cache check failed; falling through to generator", err);
+    next();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +268,13 @@ app.post("/api/tutor", requireDb, requireAuth, checkLimit("tutorMessages"), asyn
   }
 });
 
-app.post("/api/generate-lesson", requireDb, requireAuth, checkLimit("lessonsGenerated"), async (req: Request, res: Response) => {
+app.post(
+  "/api/generate-lesson",
+  requireDb,
+  requireAuth,
+  returnCachedLessonOrNext,
+  checkLimit("lessonsGenerated"),
+  async (req: Request, res: Response) => {
   try {
     const { pair, unit, lessonNum, level, nativeLang, targetLang } = req.body ?? {};
     if (!pair || unit == null || lessonNum == null || !level || !nativeLang || !targetLang) {

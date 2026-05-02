@@ -108,7 +108,7 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
   }, [user]);
 
   const isHome = pathname === "/home";
-  const isLesson = pathname.startsWith("/lesson");
+  const isLesson = pathname.startsWith("/lesson") || pathname.startsWith("/curriculum");
   const isSettings = pathname.startsWith("/settings");
   const isPricing = pathname.startsWith("/pricing");
   const isAdmin = pathname.startsWith("/admin");
@@ -133,7 +133,7 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
         </Link>
 
         <NavLink to="/home" active={isHome} label="Home" icon={<HomeIcon className="h-[22px] w-[22px]" />} />
-        <NavLink to="/home" active={isLesson} label="Lessons" icon={<BookOpen className="h-[22px] w-[22px]" />} />
+        <NavLink to="/curriculum" active={isLesson} label="Curriculum" icon={<BookOpen className="h-[22px] w-[22px]" />} />
         <NavLink to="/settings" active={isSettings} label="Languages" icon={<Globe className="h-[22px] w-[22px]" />} />
         <NavLink to="/review" active={isReview} label="Review" icon={<Repeat className="h-[22px] w-[22px]" />} />
 
