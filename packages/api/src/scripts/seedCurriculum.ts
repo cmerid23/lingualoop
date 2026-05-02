@@ -58,18 +58,25 @@ function buildPrompt(
     `Lesson theme: "${slot.theme}". Focus: ${slot.focus}.`,
     `"src" is the ${native.name} side, "tgt" is the ${target.name} side.`,
     needsTranslit
-      ? `Because one of the languages uses a non-Latin script, include a "translit" field (Latin romanization) on every vocab item and phrase that contains non-Latin characters.`
+      ? `Because one of the languages uses a non-Latin script, include a "translit" field (Latin romanization) on every vocab item, phrase, and dialogue turn that contains non-Latin characters.`
       : `Do not include "translit" — both languages use the Latin script.`,
     `Provide exactly 8 vocab items and 3 phrases on the lesson theme. Each vocab item may include an "imageQuery" (2–5 word visual description in English suitable for a stock-image search). Phrases should be useful sentence-level expressions, not single words. Make the title field exactly: "${slot.theme}".`,
+    `Also provide ONE realistic short dialogue (6–8 turns) that uses the lesson's vocab and phrases naturally. Speaker A is a native ${target.name} speaker; speaker B is the learner. Alternate turns starting with A. Use only ${slot.level}-level grammar.`,
     `Respond with ONLY this JSON object — no other keys, no wrapping:`,
-    `{"title": string, "vocab": [{"src": string, "tgt": string, "translit"?: string, "imageQuery"?: string}], "phrases": [{"src": string, "tgt": string, "translit"?: string}]}`,
+    `{"title": string, "vocab": [{"src": string, "tgt": string, "translit"?: string, "imageQuery"?: string}], "phrases": [{"src": string, "tgt": string, "translit"?: string}], "dialogues": [{"scenario": string, "turns": [{"speaker": "A"|"B", "src": string, "tgt": string, "translit"?: string}]}]}`,
   ].join("\n\n");
+}
+
+interface GeneratedDialogue {
+  scenario: string;
+  turns: unknown[];
 }
 
 interface GeneratedLesson {
   title: string;
   vocab: unknown[];
   phrases: unknown[];
+  dialogues?: GeneratedDialogue[];
 }
 
 function lessonId(pair: string, unit: number, lessonNum: number): string {
@@ -94,7 +101,7 @@ async function generateOne(
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1500,
+    max_tokens: 2200,
     system: SYSTEM,
     messages: [{ role: "user", content: buildPrompt(slot, nativeLang, targetLang) }],
   });
@@ -117,6 +124,7 @@ async function generateOne(
     title: parsed.title || slot.theme,
     vocab: parsed.vocab,
     phrases: parsed.phrases,
+    dialogues: parsed.dialogues ?? [],
     source: "curated" as const,
     schemaVersion: 1,
     createdAt: Date.now(),

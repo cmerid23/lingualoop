@@ -10,6 +10,12 @@ interface TutorDrawerProps {
   targetLang: LangCode;
   level: "A1" | "A2" | "B1";
   lessonTitle: string;
+  /** When set, the drawer auto-opens and seeds the chat with a primer
+   *  that triggers a roleplay scenario. Cleared to null after consumption
+   *  by the parent. */
+  scenarioPrimer?: string | null;
+  /** Called once the drawer has consumed the primer so the parent can clear it. */
+  onPrimerConsumed?: () => void;
 }
 
 interface ChatMessage {
@@ -22,6 +28,8 @@ export function TutorDrawer({
   targetLang,
   level,
   lessonTitle,
+  scenarioPrimer,
+  onPrimerConsumed,
 }: TutorDrawerProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -30,6 +38,19 @@ export function TutorDrawer({
   const [tutorUsage, setTutorUsage] = useState<UsageBucket | null>(null);
   const [plan, setPlan] = useState<string>("free");
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Auto-open + seed the chat when a scenario primer arrives.
+  useEffect(() => {
+    if (!scenarioPrimer) return;
+    setOpen(true);
+    setMessages([
+      {
+        role: "assistant",
+        content: `Let's roleplay! ${scenarioPrimer.replace(/^Roleplay scenario:\s*/i, "")} — start whenever you're ready.`,
+      },
+    ]);
+    onPrimerConsumed?.();
+  }, [scenarioPrimer, onPrimerConsumed]);
 
   // Load usage on first open and any time the drawer opens after sending
   useEffect(() => {

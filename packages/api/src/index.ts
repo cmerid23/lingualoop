@@ -366,8 +366,10 @@ app.get(
       const plan = row.plan;
       const tutorUsed = Number(row.tutor);
       const lessonsUsed = Number(row.lessons);
-      const tutorLimit = getLimit(plan, "tutorMessagesPerDay");
-      const lessonsLimit = getLimit(plan, "lessonsGeneratedPerDay");
+      // Admins always see unlimited regardless of subscription_plan.
+      const isAdmin = req.user!.role === "admin";
+      const tutorLimit = isAdmin ? -1 : getLimit(plan, "tutorMessagesPerDay");
+      const lessonsLimit = isAdmin ? -1 : getLimit(plan, "lessonsGeneratedPerDay");
 
       const pack = (used: number, limit: number) =>
         limit === -1

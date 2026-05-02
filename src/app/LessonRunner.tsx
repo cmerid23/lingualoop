@@ -15,6 +15,7 @@ import { PictureAssociation } from "../components/lesson/PictureAssociation";
 import { SoundFirstRecognition } from "../components/lesson/SoundFirstRecognition";
 import { PronunciationDrill } from "../components/lesson/PronunciationDrill";
 import { SentenceBuild } from "../components/lesson/SentenceBuild";
+import { ConversationPractice } from "../components/lesson/ConversationPractice";
 import { TutorDrawer } from "../components/lesson/TutorDrawer";
 
 // ---------------------------------------------------------------------------
@@ -24,12 +25,14 @@ type ActivityType =
   | { type: "picture"; item: VocabItem }
   | { type: "sound"; item: VocabItem }
   | { type: "pronunciation"; item: VocabItem }
-  | { type: "sentence"; phraseIdx: number };
+  | { type: "sentence"; phraseIdx: number }
+  | { type: "conversation"; dialogueIdx: number };
 
 function buildQueue(lesson: Lesson): ActivityType[] {
   const queue: ActivityType[] = [];
   const vocab = lesson.vocab;
   const phrases = lesson.phrases;
+  const dialogues = lesson.dialogues ?? [];
 
   // Step 1: Picture association for every vocab item (encode phase)
   for (const item of vocab) {
@@ -50,6 +53,11 @@ function buildQueue(lesson: Lesson): ActivityType[] {
   // Step 4: Sentence build — for each phrase in the lesson
   for (let i = 0; i < phrases.length; i++) {
     queue.push({ type: "sentence", phraseIdx: i });
+  }
+
+  // Step 5: Conversation practice — one bubble walk-through per dialogue
+  for (let i = 0; i < dialogues.length; i++) {
+    queue.push({ type: "conversation", dialogueIdx: i });
   }
 
   return queue;
@@ -197,6 +205,16 @@ export function LessonRunner() {
     await advance(correct ? XP_CORRECT : XP_PARTIAL);
   }
 
+  async function handleConversationContinue() {
+    setCorrectCount((c) => c + 1);
+    await advance(XP_CORRECT);
+  }
+
+  const [scenarioPrimer, setScenarioPrimer] = useState<string | null>(null);
+  function openTutorWithScenario(hint: string) {
+    setScenarioPrimer(hint);
+  }
+
   const currentActivity = useMemo(
     () => (queue.length > 0 ? queue[cursor] : null),
     [queue, cursor],
@@ -291,6 +309,7 @@ export function LessonRunner() {
     sound: { label: "Listen & Choose", dot: "var(--teal)" },
     pronunciation: { label: "Pronunciation Drill", dot: "var(--coral)" },
     sentence: { label: "Build the Sentence", dot: "var(--violet)" },
+    conversation: { label: "Conversation Practice", dot: "var(--violet-light)" },
   };
   const meta = currentActivity ? activityMeta[currentActivity.type] : null;
 
@@ -375,6 +394,19 @@ export function LessonRunner() {
             onResult={handleSentenceResult}
           />
         )}
+
+        {currentActivity?.type === "conversation"
+          && lesson.dialogues
+          && lesson.dialogues[currentActivity.dialogueIdx] && (
+          <ConversationPractice
+            key={`conv-${cursor}`}
+            dialogue={lesson.dialogues[currentActivity.dialogueIdx]}
+            targetLang={targetLang}
+            nativeLang={nativeLang}
+            onPracticeWithTutor={openTutorWithScenario}
+            onContinue={handleConversationContinue}
+          />
+        )}
       </div>
 
       <TutorDrawer
@@ -382,6 +414,8 @@ export function LessonRunner() {
         targetLang={targetLang}
         level={settings.cefrLevel}
         lessonTitle={lesson.title}
+        scenarioPrimer={scenarioPrimer}
+        onPrimerConsumed={() => setScenarioPrimer(null)}
       />
     </AppShell>
   );

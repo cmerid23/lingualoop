@@ -68,7 +68,10 @@ export function checkLimit(type: LimitType) {
 
       const plan = row.plan;
       const used = Number(row.used);
-      const limit = getLimit(plan, limitKey);
+      // Admins bypass daily limits entirely; usage is still incremented
+      // below so analytics keep working.
+      const limit =
+        req.user.role === "admin" ? -1 : getLimit(plan, limitKey);
 
       if (limit !== -1 && used >= limit) {
         res.status(429).json({
