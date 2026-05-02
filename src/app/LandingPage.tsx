@@ -163,18 +163,13 @@ function Hero({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: string }) {
           <h1 className="font-display font-bold leading-[1.05] tracking-tight text-white text-[clamp(36px,6vw,64px)]">
             The smartest way to learn
           </h1>
-          <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[clamp(13px,1.6vw,18px)] font-medium text-white/80">
-            <LangToken>Amharic</LangToken>
-            <Dot />
-            <LangToken>Tigrinya</LangToken>
-            <Dot />
-            <LangToken>Arabic</LangToken>
-            <Dot />
-            <LangToken>Spanish</LangToken>
-            <Dot />
-            <LangToken>French</LangToken>
-            <Dot />
-            <LangToken>English</LangToken>
+          <div className="mt-5 grid w-fit grid-cols-2 gap-x-10 gap-y-1.5 font-display font-bold tracking-tight text-[clamp(20px,2.6vw,32px)]">
+            <LangToken tone="gold">Amharic</LangToken>
+            <LangToken tone="white">Spanish</LangToken>
+            <LangToken tone="gold">Tigrinya</LangToken>
+            <LangToken tone="white">French</LangToken>
+            <LangToken tone="gold">Arabic</LangToken>
+            <LangToken tone="white">English</LangToken>
           </div>
           <p className="mt-6 text-base font-light leading-relaxed text-white/70 sm:text-lg">
             AI-powered lessons, picture memory, native pronunciation and
@@ -215,20 +210,22 @@ function Hero({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: string }) {
   );
 }
 
-// One language token in the row beneath the headline. Subtle hover
-// brightens it to gold-light; otherwise inherits the parent's white/80.
-function LangToken({ children }: { children: React.ReactNode }) {
+// Single language word inside the two-column grid. Hover swaps to the
+// opposite column's accent: gold-light → white, white → gold-light.
+function LangToken({
+  tone,
+  children,
+}: {
+  tone: "gold" | "white";
+  children: React.ReactNode;
+}) {
+  const base =
+    tone === "gold"
+      ? "text-[var(--gold-light)] hover:text-white"
+      : "text-white hover:text-[var(--gold-light)]";
   return (
-    <span className="cursor-default transition-colors duration-200 hover:text-[var(--gold-light)]">
+    <span className={`cursor-default transition-colors duration-200 ${base}`}>
       {children}
-    </span>
-  );
-}
-
-function Dot() {
-  return (
-    <span aria-hidden style={{ color: "var(--teal)" }} className="font-light">
-      ·
     </span>
   );
 }

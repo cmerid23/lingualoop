@@ -32,6 +32,8 @@ export function Onboarding() {
   const [target, setTarget] = useState<LangCode | null>(null);
   const [goal, setGoal] = useState<Goal | null>(null);
   const [minutes, setMinutes] = useState<Minutes | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const targets = useMemo(
     () => (native ? targetOptions(native) : []),
@@ -45,19 +47,37 @@ export function Onboarding() {
     (step === 3 && minutes !== null);
 
   async function finish() {
-    if (!native || !target || !goal || !minutes) return;
-    await save({
-      nativeLang: native,
-      targetLang: target,
-      goal,
-      dailyMinutes: minutes,
-      cefrLevel: "A1",
-    });
-    navigate("/home", { replace: true });
+    if (!native || !target || !goal || !minutes) {
+      setError("Pick an option for every step before continuing.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await save({
+        nativeLang: native,
+        targetLang: target,
+        goal,
+        dailyMinutes: minutes,
+        cefrLevel: "A1",
+      });
+      navigate("/home", { replace: true });
+    } catch (err) {
+      console.error("Onboarding save failed", err);
+      setError(
+        err instanceof Error
+          ? `Couldn't save: ${err.message}`
+          : "Something went wrong saving your settings. Try again.",
+      );
+      setSubmitting(false);
+    }
   }
 
   function next() {
-    if (step === 3) return finish();
+    if (step === 3) {
+      void finish();
+      return;
+    }
     setStep((s) => s + 1);
   }
 
@@ -99,9 +119,18 @@ export function Onboarding() {
         {step === 2 && <StepGoal selected={goal} onSelect={setGoal} />}
         {step === 3 && <StepMinutes selected={minutes} onSelect={setMinutes} />}
 
+        {error && (
+          <div
+            className="mt-5 rounded-2xl px-4 py-3 text-sm font-medium"
+            style={{ background: "rgba(255,107,107,0.1)", color: "var(--coral)" }}
+          >
+            {error}
+          </div>
+        )}
+
         <div className="mt-6 flex items-center justify-between gap-3">
           {step > 0 ? (
-            <button onClick={back} className="btn-ghost">
+            <button onClick={back} className="btn-ghost" disabled={submitting}>
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </button>
           ) : (
@@ -109,7 +138,7 @@ export function Onboarding() {
           )}
           <button
             onClick={next}
-            disabled={!canNext}
+            disabled={!canNext || submitting}
             className="btn-primary"
           >
             {step === 3 ? "Start learning" : "Next"}
