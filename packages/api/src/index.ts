@@ -2,6 +2,7 @@ import "dotenv/config";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -601,6 +602,95 @@ app.post("/api/auth/verify-otp", requireDb, async (req: Request, res: Response) 
     res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 });
+
+app.post(
+  "/api/auth/forgot-password",
+  // Reuse the OTP limiter — one knob for "stop people abusing email triggers".
+  otpLimiter,
+  requireDb,
+  async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body ?? {};
+      // Always return the same response shape so the endpoint can't be used
+      // to enumerate which emails have accounts.
+      const genericReply = {
+        success: true,
+        message: "If that email exists you will receive a reset link.",
+      };
+      if (!isValidEmail(email)) return res.json(genericReply);
+
+      const userRow = await pool!.query<{ id: string }>(
+        `SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL`,
+        [email.toLowerCase()],
+      );
+      const user = userRow.rows[0];
+      if (!user) return res.json(genericReply);
+
+      const token = randomUUID();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await pool!.query(
+        `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+         VALUES ($1, $2, $3)`,
+        [user.id, token, expiresAt],
+      );
+
+      // TODO: integrate Resend for real delivery
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          "[DEV RESET URL]",
+          `${FRONTEND_ORIGIN}/reset-password?token=${token}`,
+        );
+      }
+      res.json(genericReply);
+    } catch (err) {
+      console.error("/api/auth/forgot-password failed", err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    }
+  },
+);
+
+app.post(
+  "/api/auth/reset-password",
+  requireDb,
+  async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body ?? {};
+      if (typeof token !== "string" || token.length === 0) {
+        return res.status(400).json({ error: "Token required" });
+      }
+      if (typeof newPassword !== "string" || newPassword.length < 8) {
+        return res
+          .status(400)
+          .json({ error: "Password must be at least 8 characters" });
+      }
+
+      const result = await pool!.query<{ id: string; user_id: string }>(
+        `SELECT id, user_id FROM password_reset_tokens
+         WHERE token = $1 AND used = FALSE AND expires_at > NOW()
+         LIMIT 1`,
+        [token],
+      );
+      const row = result.rows[0];
+      if (!row) {
+        return res.status(400).json({ error: "Invalid or expired token" });
+      }
+
+      const passwordHash = await hashPassword(newPassword);
+      await pool!.query(
+        `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+        [passwordHash, row.user_id],
+      );
+      await pool!.query(
+        `UPDATE password_reset_tokens SET used = TRUE WHERE id = $1`,
+        [row.id],
+      );
+      res.json({ success: true });
+    } catch (err) {
+      console.error("/api/auth/reset-password failed", err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    }
+  },
+);
 
 app.get("/api/auth/me", requireDb, requireAuth, async (req: AuthedRequest, res: Response) => {
   try {

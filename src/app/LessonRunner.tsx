@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Trophy } from "lucide-react";
 import type { Lesson, VocabItem } from "../data/db";
@@ -17,6 +17,7 @@ import { PronunciationDrill } from "../components/lesson/PronunciationDrill";
 import { SentenceBuild } from "../components/lesson/SentenceBuild";
 import { ConversationPractice } from "../components/lesson/ConversationPractice";
 import { TutorDrawer } from "../components/lesson/TutorDrawer";
+import { Confetti } from "../components/ui/Confetti";
 
 // ---------------------------------------------------------------------------
 // Activity queue builder
@@ -504,58 +505,3 @@ function StatBox({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Confetti — fires once on the complete screen.
-// Each piece gets a random horizontal position, color, size, duration, and
-// delay so the burst feels organic rather than uniform.
-// ---------------------------------------------------------------------------
-const CONFETTI_COLORS = [
-  "#C8973A", // gold
-  "#F0C96B", // gold-light
-  "#2EC4B6", // teal
-  "#7C3AED", // violet
-  "#FF6B6B", // coral
-  "#22C55E", // green
-];
-
-function Confetti({ count = 48 }: { count?: number }) {
-  const pieces = useMemo(
-    () =>
-      Array.from({ length: count }, (_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-        duration: 2.6 + Math.random() * 2.2,
-        delay: Math.random() * 0.6,
-        size: 6 + Math.random() * 6,
-      })),
-    [count],
-  );
-
-  return (
-    <div
-      className="pointer-events-none fixed inset-0 z-[60] overflow-hidden"
-      aria-hidden
-    >
-      {pieces.map((p) => {
-        const style: CSSProperties = {
-          left: `${p.left}%`,
-          top: -10,
-          width: p.size,
-          height: p.size,
-          background: p.color,
-          borderRadius: 2,
-          animationDuration: `${p.duration}s`,
-          animationDelay: `${p.delay}s`,
-        };
-        return (
-          <span
-            key={p.id}
-            className="absolute animate-confetti-fall"
-            style={style}
-          />
-        );
-      })}
-    </div>
-  );
-}

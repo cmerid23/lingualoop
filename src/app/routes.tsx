@@ -9,6 +9,9 @@ import { RegisterPage } from "./RegisterPage";
 import { PricingPage } from "./PricingPage";
 import { ReviewSession } from "./ReviewSession";
 import { CurriculumPage } from "./CurriculumPage";
+import { ForgotPasswordPage } from "./ForgotPasswordPage";
+import { ResetPasswordPage } from "./ResetPasswordPage";
+import { NotFoundPage } from "./NotFoundPage";
 import { AdminDashboard } from "./admin/AdminDashboard";
 import { AdminLogin } from "./admin/AdminLogin";
 import { useSettingsStore } from "../store/settingsStore";
@@ -90,6 +93,8 @@ export function AppRoutes() {
         }
       />
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Authenticated */}
       <Route
@@ -149,8 +154,8 @@ export function AppRoutes() {
         }
       />
 
-      {/* Wildcard → marketing landing */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Wildcard → real 404 page */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

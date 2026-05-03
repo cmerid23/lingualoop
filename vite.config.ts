@@ -13,8 +13,8 @@ export default defineConfig({
         short_name: "LinguaLoop",
         description:
           "Learn English, Spanish, Amharic, Tigrinya, and French with AI-powered lessons.",
-        theme_color: "#0EA5E9",
-        background_color: "#0F172A",
+        theme_color: "#C8973A",
+        background_color: "#0A0A0F",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",

@@ -10,6 +10,7 @@ import { useProgressStore } from "../store/progressStore";
 import { useAuthStore } from "../store/authStore";
 import { useSpeak } from "../lib/useSpeak";
 import { fetchUsageToday, type UsageToday } from "../lib/usage";
+import { getDueCards } from "../lib/srs";
 
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -25,6 +26,7 @@ export function Home() {
   const navigate = useNavigate();
   const [lessonTitle, setLessonTitle] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageToday | null>(null);
+  const [dueCount, setDueCount] = useState(0);
 
   useEffect(() => {
     if (!settings) return;
@@ -34,6 +36,9 @@ export function Home() {
       .equals([pair, 1, 1])
       .first()
       .then((row) => setLessonTitle(row?.title ?? null));
+    getDueCards(pair, 100)
+      .then((cards) => setDueCount(cards.length))
+      .catch(() => setDueCount(0));
   }, [settings]);
 
   useEffect(() => {
@@ -197,9 +202,20 @@ export function Home() {
           </div>
         )}
 
-        {/* ── Bottom row: due reviews | word of day ── */}
-        <div className="grid gap-5 md:grid-cols-[2fr_1fr]">
-          <ReviewQueueCard onStart={() => navigate("/lesson/1/1")} dueCount={0} />
+        {/* ── Bottom row: due reviews (when any) | word of day ── */}
+        <div
+          className={
+            dueCount > 0
+              ? "grid gap-5 md:grid-cols-[2fr_1fr]"
+              : "grid gap-5"
+          }
+        >
+          {dueCount > 0 && (
+            <ReviewQueueCard
+              onStart={() => navigate("/review")}
+              dueCount={dueCount}
+            />
+          )}
           <WordOfDayCard
             tgt={helloTarget}
             translit={helloTranslit}

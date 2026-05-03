@@ -73,13 +73,12 @@ export function LoginPage() {
             show={showPw}
             onToggle={() => setShowPw((v) => !v)}
             rightLink={
-              <button
-                type="button"
-                onClick={() => alert("Password reset is coming soon.")}
+              <Link
+                to="/forgot-password"
                 className="text-xs font-medium text-gold hover:underline"
               >
                 Forgot password?
-              </button>
+              </Link>
             }
           />
 
