@@ -13,6 +13,10 @@ export interface AuthedUser {
   fullName: string | null;
   role: string;
   subscriptionPlan: string;
+  subscriptionStatus?: string;
+  subscriptionEndsAt?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  stripeCustomerId?: string | null;
   nativeLang?: string;
   targetLang?: string;
   cefrLevel?: string;

@@ -1,5 +1,6 @@
-import { useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { LogOut, CreditCard, Loader2, Zap } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import {
   LANGUAGES,
@@ -9,6 +10,7 @@ import {
 } from "../data/languages";
 import { useSettingsStore } from "../store/settingsStore";
 import { useAuthStore } from "../store/authStore";
+import { openBillingPortal } from "../lib/stripe";
 import { db } from "../data/db";
 
 export function SettingsPage() {
@@ -138,6 +140,9 @@ export function SettingsPage() {
           })}
         </div>
 
+        {/* ── Subscription ── */}
+        {user && <SubscriptionCard />}
+
         {/* ── Account ── */}
         {user && (
           <div className="card mb-4">
@@ -195,5 +200,108 @@ export function SettingsPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+// ─── Subscription card ─────────────────────────────────────────────────────
+function SubscriptionCard() {
+  const user = useAuthStore((s) => s.user);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!user) return null;
+  const plan = (user.subscriptionPlan ?? "free") as "free" | "pro" | "premium";
+  const status = user.subscriptionStatus ?? "active";
+  const endsAt = user.subscriptionEndsAt
+    ? new Date(user.subscriptionEndsAt)
+    : null;
+  const isPaid = plan === "pro" || plan === "premium";
+  const hasCustomer = Boolean(user.stripeCustomerId);
+
+  const planLabel = plan === "premium" ? "Premium" : plan === "pro" ? "Pro" : "Free";
+  const planTone =
+    plan === "premium"
+      ? { background: "rgba(200,151,58,0.15)", color: "var(--gold)" }
+      : plan === "pro"
+        ? { background: "rgba(46,196,182,0.15)", color: "var(--teal-dark)" }
+        : { background: "var(--surface-2)", color: "var(--ink-3)" };
+
+  async function manage() {
+    setError(null);
+    setBusy(true);
+    try {
+      await openBillingPortal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open billing portal");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card mb-4">
+      <div className="flex items-center justify-between">
+        <div className="card-label">Subscription</div>
+        <span
+          className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider"
+          style={planTone}
+        >
+          {planLabel}
+        </span>
+      </div>
+
+      {isPaid && (
+        <div className="mt-4 space-y-1.5 text-sm font-light text-ink-3">
+          <div className="flex items-center justify-between">
+            <span>Status</span>
+            <span className="font-medium capitalize text-ink">{status}</span>
+          </div>
+          {endsAt && (
+            <div className="flex items-center justify-between">
+              <span>{user.cancelAtPeriodEnd ? "Ends" : "Renews"}</span>
+              <span className="font-medium text-ink">
+                {endsAt.toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isPaid && (
+        <p className="mt-3 text-sm font-light text-ink-3">
+          You're on the free plan. Upgrade for unlimited lessons and the AI tutor.
+        </p>
+      )}
+
+      {error && (
+        <div
+          className="mt-4 rounded-2xl px-3 py-2 text-xs font-medium"
+          style={{ background: "rgba(255,107,107,0.1)", color: "var(--coral)" }}
+        >
+          {error}
+        </div>
+      )}
+
+      <div className="mt-4 flex gap-2">
+        {hasCustomer ? (
+          <button onClick={manage} disabled={busy} className="btn-ghost flex-1">
+            {busy ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <CreditCard className="mr-2 h-4 w-4" />
+            )}
+            Manage subscription
+          </button>
+        ) : (
+          <Link to="/pricing" className="btn-gold flex-1">
+            <Zap className="mr-2 h-4 w-4" />
+            Upgrade
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

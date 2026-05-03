@@ -23,6 +23,14 @@ import {
   todayUtcDate,
 } from "./usageMiddleware.js";
 import { getLimit } from "./limits.js";
+import {
+  PLAN_FROM_PRICE,
+  STRIPE_WEBHOOK_SECRET,
+  cycleFromPrice,
+  priceIdFor,
+  stripe,
+  stripeIsConfigured,
+} from "./stripe.js";
 
 // ESM doesn't have __dirname natively — shim it so static-asset paths read naturally.
 const __filename = fileURLToPath(import.meta.url);
@@ -218,6 +226,8 @@ interface UserRow {
   subscription_status: string;
   subscription_started_at: Date | null;
   subscription_ends_at: Date | null;
+  cancel_at_period_end: boolean | null;
+  stripe_customer_id: string | null;
   streak_days: number;
   total_xp: number;
   native_lang: string;
@@ -241,6 +251,8 @@ function publicUser(row: UserRow) {
     subscriptionStatus: row.subscription_status,
     subscriptionStartedAt: row.subscription_started_at,
     subscriptionEndsAt: row.subscription_ends_at,
+    cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+    stripeCustomerId: row.stripe_customer_id,
     streakDays: row.streak_days,
     totalXp: row.total_xp,
     nativeLang: row.native_lang,
@@ -287,6 +299,46 @@ const app = express();
 // express-rate-limit sees the real client IP instead of 127.0.0.1.
 app.set("trust proxy", 1);
 app.use(cors({ origin: FRONTEND_ORIGIN }));
+
+// ---------------------------------------------------------------------------
+// Stripe webhook — MUST be registered with express.raw() BEFORE the global
+// express.json() middleware. Stripe verifies the signature against the raw
+// request body bytes; if json parsing has already touched it, verification
+// fails with "No signatures found matching the expected signature".
+// ---------------------------------------------------------------------------
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req: Request, res: Response) => {
+    if (!pool) {
+      // Always 200 so Stripe doesn't retry forever.
+      res.status(200).end();
+      return;
+    }
+    const sig = req.header("stripe-signature") ?? "";
+    let event: import("stripe").Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body as Buffer,
+        sig,
+        STRIPE_WEBHOOK_SECRET,
+      );
+    } catch (err) {
+      console.error("Stripe webhook signature failed", err);
+      res.status(400).send(`Webhook Error: ${err instanceof Error ? err.message : "bad signature"}`);
+      return;
+    }
+
+    try {
+      await handleStripeEvent(event);
+    } catch (err) {
+      // Log but don't return non-2xx — Stripe will retry forever otherwise.
+      console.error(`Stripe webhook handler failed for ${event.type}`, err);
+    }
+    res.json({ received: true });
+  },
+);
+
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
@@ -432,6 +484,297 @@ app.get(
       });
     } catch (err) {
       console.error("/api/usage/today failed", err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Stripe — checkout, portal, subscription view + webhook handler
+// ---------------------------------------------------------------------------
+async function getOrCreateStripeCustomer(userId: string, email: string): Promise<string> {
+  const existing = await pool!.query<{ stripe_customer_id: string | null }>(
+    `SELECT stripe_customer_id FROM users WHERE id = $1`,
+    [userId],
+  );
+  const existingId = existing.rows[0]?.stripe_customer_id;
+  if (existingId) return existingId;
+
+  const customer = await stripe.customers.create({
+    email,
+    metadata: { userId },
+  });
+  await pool!.query(
+    `UPDATE users SET stripe_customer_id = $1, updated_at = NOW() WHERE id = $2`,
+    [customer.id, userId],
+  );
+  return customer.id;
+}
+
+async function findUserByCustomerId(
+  customerId: string,
+): Promise<{ id: string; email: string } | null> {
+  const r = await pool!.query<{ id: string; email: string }>(
+    `SELECT id, email FROM users WHERE stripe_customer_id = $1`,
+    [customerId],
+  );
+  return r.rows[0] ?? null;
+}
+
+async function handleStripeEvent(event: import("stripe").Stripe.Event): Promise<void> {
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object;
+      const customerId = typeof session.customer === "string"
+        ? session.customer
+        : session.customer?.id;
+      if (!customerId) return;
+      const subscriptionId = typeof session.subscription === "string"
+        ? session.subscription
+        : session.subscription?.id;
+      if (!subscriptionId) return;
+
+      const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      const priceId = sub.items.data[0]?.price.id ?? "";
+      const plan = PLAN_FROM_PRICE[priceId] ?? null;
+      if (!plan) {
+        console.warn(`Unknown price ID in checkout: ${priceId}`);
+        return;
+      }
+      const periodEnd = new Date(sub.current_period_end * 1000);
+      const periodStart = new Date(sub.current_period_start * 1000);
+      const amount = sub.items.data[0]?.price.unit_amount ?? 0;
+      const currency = (sub.items.data[0]?.price.currency ?? "usd").toUpperCase();
+
+      const userRow = await findUserByCustomerId(customerId);
+      if (!userRow) return;
+
+      await pool!.query(
+        `UPDATE users
+         SET subscription_plan = $1,
+             subscription_status = 'active',
+             subscription_started_at = $2,
+             subscription_ends_at = $3,
+             cancel_at_period_end = $4,
+             updated_at = NOW()
+         WHERE id = $5`,
+        [plan, periodStart, periodEnd, sub.cancel_at_period_end, userRow.id],
+      );
+
+      await pool!.query(
+        `INSERT INTO subscriptions (user_id, plan, status, amount_cents, currency, started_at, ends_at)
+         VALUES ($1, $2, 'active', $3, $4, $5, $6)`,
+        [userRow.id, plan, amount, currency, periodStart, periodEnd],
+      );
+      break;
+    }
+
+    case "customer.subscription.updated": {
+      const sub = event.data.object;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+      const userRow = await findUserByCustomerId(customerId);
+      if (!userRow) return;
+
+      const priceId = sub.items.data[0]?.price.id ?? "";
+      const plan = PLAN_FROM_PRICE[priceId];
+      const periodEnd = new Date(sub.current_period_end * 1000);
+
+      await pool!.query(
+        `UPDATE users
+         SET subscription_plan = COALESCE($1, subscription_plan),
+             subscription_status = $2,
+             subscription_ends_at = $3,
+             cancel_at_period_end = $4,
+             updated_at = NOW()
+         WHERE id = $5`,
+        [plan ?? null, sub.status, periodEnd, sub.cancel_at_period_end, userRow.id],
+      );
+      break;
+    }
+
+    case "customer.subscription.deleted": {
+      const sub = event.data.object;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+      const userRow = await findUserByCustomerId(customerId);
+      if (!userRow) return;
+      await pool!.query(
+        `UPDATE users
+         SET subscription_plan = 'free',
+             subscription_status = 'cancelled',
+             cancel_at_period_end = FALSE,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [userRow.id],
+      );
+      await pool!.query(
+        `UPDATE subscriptions SET cancelled_at = NOW(), status = 'cancelled'
+         WHERE user_id = $1 AND cancelled_at IS NULL`,
+        [userRow.id],
+      );
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      const invoice = event.data.object;
+      const customerId = typeof invoice.customer === "string"
+        ? invoice.customer
+        : invoice.customer?.id;
+      if (!customerId) return;
+      const userRow = await findUserByCustomerId(customerId);
+      if (!userRow) return;
+      await pool!.query(
+        `UPDATE users SET subscription_status = 'past_due', updated_at = NOW() WHERE id = $1`,
+        [userRow.id],
+      );
+      break;
+    }
+  }
+}
+
+app.post(
+  "/api/stripe/create-checkout-session",
+  requireDb,
+  requireAuth,
+  async (req: AuthedRequest, res: Response) => {
+    try {
+      if (!stripeIsConfigured()) {
+        return res.status(503).json({
+          error: "stripe_not_configured",
+          message: "Payments are temporarily unavailable. Try again soon.",
+        });
+      }
+      const { plan, billingCycle, priceId: clientPriceId } = req.body ?? {};
+      if (plan !== "pro" && plan !== "premium") {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
+      if (billingCycle !== "monthly" && billingCycle !== "annual") {
+        return res.status(400).json({ error: "Invalid billing cycle" });
+      }
+
+      // Prefer the resolved price ID from server config; accept the
+      // client-supplied one only if it matches a known price.
+      const resolved = priceIdFor(plan, billingCycle);
+      const priceId = resolved
+        ?? (typeof clientPriceId === "string" && PLAN_FROM_PRICE[clientPriceId]
+          ? clientPriceId
+          : null);
+      if (!priceId) {
+        return res
+          .status(503)
+          .json({ error: "price_not_configured", message: `No Stripe price for ${plan} ${billingCycle}.` });
+      }
+
+      // Need the user's email for the customer record.
+      const userQ = await pool!.query<{ email: string }>(
+        `SELECT email FROM users WHERE id = $1`,
+        [req.user!.id],
+      );
+      const userEmail = userQ.rows[0]?.email;
+      if (!userEmail) return res.status(404).json({ error: "User not found" });
+
+      const customerId = await getOrCreateStripeCustomer(req.user!.id, userEmail);
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${FRONTEND_ORIGIN}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${FRONTEND_ORIGIN}/payment/cancel`,
+        allow_promotion_codes: true,
+        metadata: {
+          userId: req.user!.id,
+          plan,
+          billingCycle,
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (err) {
+      console.error("/api/stripe/create-checkout-session failed", err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    }
+  },
+);
+
+app.post(
+  "/api/stripe/create-portal-session",
+  requireDb,
+  requireAuth,
+  async (req: AuthedRequest, res: Response) => {
+    try {
+      if (!stripeIsConfigured()) {
+        return res.status(503).json({ error: "stripe_not_configured" });
+      }
+      const r = await pool!.query<{ stripe_customer_id: string | null }>(
+        `SELECT stripe_customer_id FROM users WHERE id = $1`,
+        [req.user!.id],
+      );
+      const customerId = r.rows[0]?.stripe_customer_id;
+      if (!customerId) {
+        return res.status(400).json({
+          error: "no_customer",
+          message: "You don't have an active subscription.",
+        });
+      }
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${FRONTEND_ORIGIN}/settings`,
+      });
+      res.json({ url: session.url });
+    } catch (err) {
+      console.error("/api/stripe/create-portal-session failed", err);
+      res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    }
+  },
+);
+
+app.get(
+  "/api/stripe/subscription",
+  requireDb,
+  requireAuth,
+  async (req: AuthedRequest, res: Response) => {
+    try {
+      const r = await pool!.query<{
+        subscription_plan: string;
+        subscription_status: string;
+        subscription_ends_at: Date | null;
+        cancel_at_period_end: boolean | null;
+        stripe_customer_id: string | null;
+      }>(
+        `SELECT subscription_plan, subscription_status, subscription_ends_at,
+                cancel_at_period_end, stripe_customer_id
+         FROM users WHERE id = $1`,
+        [req.user!.id],
+      );
+      const row = r.rows[0];
+      if (!row) return res.status(404).json({ error: "User not found" });
+
+      // Default billing cycle from the latest active subscription row.
+      let billingCycle: "monthly" | "annual" | null = null;
+      if (stripeIsConfigured() && row.stripe_customer_id) {
+        try {
+          const subs = await stripe.subscriptions.list({
+            customer: row.stripe_customer_id,
+            status: "all",
+            limit: 1,
+          });
+          const priceId = subs.data[0]?.items.data[0]?.price.id;
+          if (priceId) billingCycle = cycleFromPrice(priceId);
+        } catch (err) {
+          console.warn("Could not list Stripe subscriptions", err);
+        }
+      }
+
+      res.json({
+        plan: row.subscription_plan,
+        status: row.subscription_status,
+        billingCycle,
+        currentPeriodEnd: row.subscription_ends_at,
+        cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+        portalUrl: null,
+      });
+    } catch (err) {
+      console.error("/api/stripe/subscription failed", err);
       res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
     }
   },

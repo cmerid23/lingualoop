@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Check, X, Sparkles, Loader2 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { useAuthStore } from "../store/authStore";
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+import { createCheckoutSession, openBillingPortal } from "../lib/stripe";
 
 export type Plan = "free" | "pro" | "premium";
 type Cycle = "monthly" | "annual";
@@ -50,7 +50,10 @@ export function PricingPage() {
   const user = useAuthStore((s) => s.user);
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const currentPlan = (user?.subscriptionPlan ?? "free") as Plan;
-  const [waitlistPlan, setWaitlistPlan] = useState<Plan | null>(null);
+  const [busyPlan, setBusyPlan] = useState<Plan | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
+  const hasStripeCustomer = Boolean(user?.stripeCustomerId);
 
   function priceLabel(plan: Plan): string {
     if (plan === "free") return "$0";
@@ -69,13 +72,36 @@ export function PricingPage() {
   function buttonLabel(plan: Plan): string {
     if (currentPlan === plan) return "Current plan";
     if (plan === "free") return "Downgrade to Free";
-    return "Join waitlist →";
+    if (plan === "pro") return "Upgrade to Pro";
+    return "Go Premium";
   }
 
-  function onUpgrade(plan: Plan) {
-    if (plan === currentPlan) return;
-    if (plan === "free") return;
-    setWaitlistPlan(plan);
+  async function onUpgrade(plan: Plan) {
+    if (plan === currentPlan || plan === "free") return;
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+    setError(null);
+    setBusyPlan(plan);
+    try {
+      await createCheckoutSession(plan, cycle);
+      // createCheckoutSession redirects on success; if we reach here, fall through.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start checkout");
+      setBusyPlan(null);
+    }
+  }
+
+  async function onManage() {
+    setError(null);
+    setPortalBusy(true);
+    try {
+      await openBillingPortal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open billing portal");
+      setPortalBusy(false);
+    }
   }
 
   return (
@@ -144,6 +170,7 @@ export function PricingPage() {
             features={PLAN_FEATURES.pro}
             buttonLabel={buttonLabel("pro")}
             onClick={() => onUpgrade("pro")}
+            busy={busyPlan === "pro"}
           />
 
           {/* Premium */}
@@ -158,135 +185,49 @@ export function PricingPage() {
             features={PLAN_FEATURES.premium}
             buttonLabel={buttonLabel("premium")}
             onClick={() => onUpgrade("premium")}
+            busy={busyPlan === "premium"}
           />
         </div>
 
-        <p className="mt-10 text-center text-xs font-light text-ink-3">
-          Plans automatically renew. Cancel anytime in Settings.
-        </p>
-      </div>
-
-      {waitlistPlan && (
-        <WaitlistModal
-          plan={waitlistPlan}
-          defaultEmail={user?.email ?? ""}
-          onClose={() => setWaitlistPlan(null)}
-        />
-      )}
-    </AppShell>
-  );
-}
-
-// ─── Waitlist modal ──────────────────────────────────────────────────────
-function WaitlistModal({
-  plan,
-  defaultEmail,
-  onClose,
-}: {
-  plan: Plan;
-  defaultEmail: string;
-  onClose: () => void;
-}) {
-  const [email, setEmail] = useState(defaultEmail);
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const planLabel = plan === "pro" ? "Pro" : "Premium";
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setErr("Enter a valid email.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/waitlist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, plan }),
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? `${res.status}`);
-      }
-      setDone(true);
-    } catch (e2) {
-      setErr(e2 instanceof Error ? e2.message : "Could not join the waitlist.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm px-6"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-3xl border border-surface-2 bg-white p-8 shadow-lift"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-gold-pale px-3 py-1 text-[11px] font-bold uppercase tracking-[2px] text-gold">
-          <Sparkles className="h-3 w-3" />
-          {planLabel} · Coming soon
-        </div>
-        <h3 className="font-display text-[26px] font-bold leading-tight tracking-tight">
-          Coming soon
-        </h3>
-        <p className="mt-2 text-[14px] font-light leading-relaxed text-ink-3">
-          Enter your email and we'll notify you when {planLabel} launches.
-        </p>
-
-        {done ? (
+        {error && (
           <div
-            className="mt-6 rounded-2xl px-4 py-4 text-sm font-medium"
-            style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e" }}
+            className="mx-auto mt-6 max-w-md rounded-2xl px-4 py-3 text-center text-sm font-medium"
+            style={{ background: "rgba(255,107,107,0.1)", color: "var(--coral)" }}
           >
-            ✓ You're on the list. We'll email you when {planLabel} goes live.
+            {error}
           </div>
-        ) : (
-          <form onSubmit={submit} className="mt-6">
-            <input
-              type="email"
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={busy}
-              placeholder="you@example.com"
-              className={`w-full rounded-2xl border bg-surface px-4 py-3 text-[15px] outline-none transition focus:bg-white ${
-                err ? "border-coral focus:border-coral" : "border-surface-3 focus:border-ink-3"
-              }`}
-            />
-            {err && <p className="mt-1.5 text-xs font-medium text-coral">{err}</p>}
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={busy}
-                className="btn-ghost"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={busy || email.trim().length === 0}
-                className="btn-gold flex-1"
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Notify me"}
-              </button>
-            </div>
-          </form>
         )}
 
-        {done && (
-          <button onClick={onClose} className="btn-primary mt-4 w-full">
-            Close
-          </button>
+        {hasStripeCustomer && (
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <button
+              onClick={onManage}
+              disabled={portalBusy}
+              className="btn-ghost"
+            >
+              {portalBusy ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : null}
+              Manage subscription
+            </button>
+            <p className="text-[11px] font-light text-ink-3">
+              Update payment method, change billing cycle, or cancel any time.
+            </p>
+          </div>
         )}
+
+        <p className="mt-10 text-center text-xs font-light text-ink-3">
+          Plans automatically renew. Cancel anytime via{" "}
+          {hasStripeCustomer ? (
+            "Manage subscription above or "
+          ) : null}
+          <Link to="/settings" className="underline hover:text-ink">
+            Settings
+          </Link>
+          .
+        </p>
       </div>
-    </div>
+    </AppShell>
   );
 }
 
@@ -325,6 +266,7 @@ export function PlanCard({
   features,
   buttonLabel,
   onClick,
+  busy = false,
 }: {
   plan: Plan;
   current: boolean;
@@ -337,6 +279,7 @@ export function PlanCard({
   features: FeatureRow[];
   buttonLabel: string;
   onClick: () => void;
+  busy?: boolean;
 }) {
   const isDark = tone !== "surface";
   const wrapStyle =
@@ -420,8 +363,8 @@ export function PlanCard({
 
       <button
         onClick={onClick}
-        disabled={current}
-        className={`mt-7 w-full rounded-full py-3.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        disabled={current || busy}
+        className={`mt-7 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
           current
             ? isDark
               ? "bg-white/20 text-white"
@@ -431,7 +374,7 @@ export function PlanCard({
               : "bg-ink text-white hover:-translate-y-0.5 hover:shadow-soft"
         }`}
       >
-        {buttonLabel}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : buttonLabel}
       </button>
 
       {/* Decorative glow */}

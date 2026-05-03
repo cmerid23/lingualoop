@@ -13,6 +13,8 @@ import { ForgotPasswordPage } from "./ForgotPasswordPage";
 import { ResetPasswordPage } from "./ResetPasswordPage";
 import { TermsPage } from "./TermsPage";
 import { PrivacyPage } from "./PrivacyPage";
+import { PaymentSuccessPage } from "./PaymentSuccessPage";
+import { PaymentCancelPage } from "./PaymentCancelPage";
 import { NotFoundPage } from "./NotFoundPage";
 import { AdminDashboard } from "./admin/AdminDashboard";
 import { AdminLogin } from "./admin/AdminLogin";
@@ -78,6 +80,15 @@ export function AppRoutes() {
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/payment/cancel" element={<PaymentCancelPage />} />
+      <Route
+        path="/payment/success"
+        element={
+          <RequireAuth>
+            <PaymentSuccessPage />
+          </RequireAuth>
+        }
+      />
 
       {/* Auth pages — bounce logged-in users to /home */}
       <Route
