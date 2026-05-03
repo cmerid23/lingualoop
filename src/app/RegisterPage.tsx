@@ -125,8 +125,14 @@ export function RegisterPage() {
 
         <p className="mt-6 text-center text-[11px] font-light text-ink-3 leading-relaxed">
           By creating an account, you agree to our{" "}
-          <a href="#terms" className="underline">Terms of Service</a> and{" "}
-          <a href="#privacy" className="underline">Privacy Policy</a>.
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">
+            Privacy Policy
+          </a>
+          .
         </p>
       </div>
     </SplitAuthLayout>

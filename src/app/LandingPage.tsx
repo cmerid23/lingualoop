@@ -12,19 +12,19 @@ export function LandingPage() {
 
   return (
     <div className="bg-surface text-ink">
-      <Navbar isAuthed={Boolean(user)} />
+      <MarketingNavbar isAuthed={Boolean(user)} />
       <Hero ctaLabel={ctaLabel} ctaTo={ctaTo} />
       <LanguagesSection />
       <HowItWorksSection />
       <PricingPreviewSection />
       <FinalCta isAuthed={Boolean(user)} />
-      <Footer />
+      <MarketingFooter />
     </div>
   );
 }
 
 // ─── Navbar ───────────────────────────────────────────────────────────────
-function Navbar({ isAuthed }: { isAuthed: boolean }) {
+export function MarketingNavbar({ isAuthed }: { isAuthed: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -514,23 +514,34 @@ function FinalCta({ isAuthed }: { isAuthed: boolean }) {
 }
 
 // ─── Footer ───────────────────────────────────────────────────────────────
-function Footer() {
+export function MarketingFooter() {
+  const year = new Date().getFullYear();
   return (
     <footer className="bg-ink py-10 text-white/50">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-xs font-light sm:flex-row lg:px-8">
-        <div className="flex items-center gap-2.5">
+      <div className="mx-auto grid max-w-6xl gap-5 px-6 text-xs font-light md:grid-cols-3 md:items-center lg:px-8">
+        {/* Left — logo + copyright */}
+        <div className="flex items-center gap-2.5 md:justify-start">
           <span
             className="flex h-7 w-7 items-center justify-center rounded-md font-display text-xs font-bold tracking-tighter text-ink"
             style={{ background: "linear-gradient(135deg, var(--gold), var(--gold-light))" }}
           >
             LL
           </span>
-          <span>© {new Date().getFullYear()} LinguaLoop</span>
+          <span className="font-display text-sm font-semibold text-white">LinguaLoop</span>
+          <span className="ml-2">© {year} LinguaLoop. All rights reserved.</span>
         </div>
-        <div className="flex items-center gap-5">
+
+        {/* Center — links */}
+        <nav className="flex items-center gap-5 md:justify-center">
+          <Link to="/" className="hover:text-white">Home</Link>
           <Link to="/pricing" className="hover:text-white">Pricing</Link>
-          <Link to="/login" className="hover:text-white">Log in</Link>
-          <Link to="/register" className="hover:text-white">Sign up</Link>
+          <Link to="/terms" className="hover:text-white">Terms</Link>
+          <Link to="/privacy" className="hover:text-white">Privacy</Link>
+        </nav>
+
+        {/* Right — tagline */}
+        <div className="md:text-right">
+          6 languages · 30 pairs · AI-powered
         </div>
       </div>
     </footer>

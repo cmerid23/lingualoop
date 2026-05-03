@@ -11,6 +11,8 @@ import { ReviewSession } from "./ReviewSession";
 import { CurriculumPage } from "./CurriculumPage";
 import { ForgotPasswordPage } from "./ForgotPasswordPage";
 import { ResetPasswordPage } from "./ResetPasswordPage";
+import { TermsPage } from "./TermsPage";
+import { PrivacyPage } from "./PrivacyPage";
 import { NotFoundPage } from "./NotFoundPage";
 import { AdminDashboard } from "./admin/AdminDashboard";
 import { AdminLogin } from "./admin/AdminLogin";
@@ -74,6 +76,8 @@ export function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       {/* Auth pages — bounce logged-in users to /home */}
       <Route
