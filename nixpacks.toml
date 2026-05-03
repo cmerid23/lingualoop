@@ -1,0 +1,23 @@
+# Nixpacks build override.
+#
+# The default Node provider sets NODE_ENV=production for the install
+# phase, which makes pnpm silently skip devDependencies. That breaks our
+# build because `tsc` and `vite` live in devDependencies. Override the
+# install phase to force --prod=false so every package is present at
+# build time. The runtime container only serves the compiled dist/ +
+# packages/api/dist/, so this only affects the build image's footprint.
+#
+# build + start commands stay in railway.json (which takes precedence).
+
+providers = ["node"]
+
+[variables]
+NPM_CONFIG_PRODUCTION = "false"
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = [
+  "npm install -g corepack@0.24.1",
+  "corepack enable",
+  "pnpm install --frozen-lockfile --prod=false",
+]
