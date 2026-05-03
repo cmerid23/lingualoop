@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Check, X, Sparkles } from "lucide-react";
+import { Check, X, Sparkles, Loader2 } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import { useAuthStore } from "../store/authStore";
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 export type Plan = "free" | "pro" | "premium";
 type Cycle = "monthly" | "annual";
@@ -48,6 +50,7 @@ export function PricingPage() {
   const user = useAuthStore((s) => s.user);
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const currentPlan = (user?.subscriptionPlan ?? "free") as Plan;
+  const [waitlistPlan, setWaitlistPlan] = useState<Plan | null>(null);
 
   function priceLabel(plan: Plan): string {
     if (plan === "free") return "$0";
@@ -66,15 +69,13 @@ export function PricingPage() {
   function buttonLabel(plan: Plan): string {
     if (currentPlan === plan) return "Current plan";
     if (plan === "free") return "Downgrade to Free";
-    if (plan === "pro") return "Upgrade to Pro";
-    return "Go Premium";
+    return "Join waitlist →";
   }
 
   function onUpgrade(plan: Plan) {
     if (plan === currentPlan) return;
-    alert(
-      "Payment integration is rolling out soon. To test a paid plan, ask an admin to update your subscription in the admin dashboard.",
-    );
+    if (plan === "free") return;
+    setWaitlistPlan(plan);
   }
 
   return (
@@ -164,7 +165,128 @@ export function PricingPage() {
           Plans automatically renew. Cancel anytime in Settings.
         </p>
       </div>
+
+      {waitlistPlan && (
+        <WaitlistModal
+          plan={waitlistPlan}
+          defaultEmail={user?.email ?? ""}
+          onClose={() => setWaitlistPlan(null)}
+        />
+      )}
     </AppShell>
+  );
+}
+
+// ─── Waitlist modal ──────────────────────────────────────────────────────
+function WaitlistModal({
+  plan,
+  defaultEmail,
+  onClose,
+}: {
+  plan: Plan;
+  defaultEmail: string;
+  onClose: () => void;
+}) {
+  const [email, setEmail] = useState(defaultEmail);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const planLabel = plan === "pro" ? "Pro" : "Premium";
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErr("Enter a valid email.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/waitlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, plan }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? `${res.status}`);
+      }
+      setDone(true);
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : "Could not join the waitlist.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm px-6"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-3xl border border-surface-2 bg-white p-8 shadow-lift"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-gold-pale px-3 py-1 text-[11px] font-bold uppercase tracking-[2px] text-gold">
+          <Sparkles className="h-3 w-3" />
+          {planLabel} · Coming soon
+        </div>
+        <h3 className="font-display text-[26px] font-bold leading-tight tracking-tight">
+          Coming soon
+        </h3>
+        <p className="mt-2 text-[14px] font-light leading-relaxed text-ink-3">
+          Enter your email and we'll notify you when {planLabel} launches.
+        </p>
+
+        {done ? (
+          <div
+            className="mt-6 rounded-2xl px-4 py-4 text-sm font-medium"
+            style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e" }}
+          >
+            ✓ You're on the list. We'll email you when {planLabel} goes live.
+          </div>
+        ) : (
+          <form onSubmit={submit} className="mt-6">
+            <input
+              type="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={busy}
+              placeholder="you@example.com"
+              className={`w-full rounded-2xl border bg-surface px-4 py-3 text-[15px] outline-none transition focus:bg-white ${
+                err ? "border-coral focus:border-coral" : "border-surface-3 focus:border-ink-3"
+              }`}
+            />
+            {err && <p className="mt-1.5 text-xs font-medium text-coral">{err}</p>}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={busy}
+                className="btn-ghost"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={busy || email.trim().length === 0}
+                className="btn-gold flex-1"
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Notify me"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {done && (
+          <button onClick={onClose} className="btn-primary mt-4 w-full">
+            Close
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

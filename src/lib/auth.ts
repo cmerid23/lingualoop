@@ -54,6 +54,30 @@ export const authHeaders = (): Record<string, string> => ({
   Authorization: `Bearer ${getToken() ?? ""}`,
 });
 
+/**
+ * fetch() wrapper that always sends the auth header and handles a 401 by
+ * clearing the local token + hard-redirecting to /login. Use this for
+ * every authenticated API call so expired sessions surface as a clean
+ * sign-out instead of opaque errors.
+ */
+export async function apiFetch(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...authHeaders(), ...(options.headers ?? {}) },
+  });
+  if (res.status === 401) {
+    clearToken();
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    throw new Error("Session expired");
+  }
+  return res;
+}
+
 // ── API calls ──────────────────────────────────────────────────────────────
 /** Carries HTTP status + parsed body so callers can react to 429 etc. */
 export class ApiError extends Error {
@@ -115,9 +139,7 @@ export async function registerUser(
 }
 
 export async function fetchMe(): Promise<AuthedUser> {
-  const res = await fetch(`${API_BASE}/api/auth/me`, {
-    headers: authHeaders(),
-  });
+  const res = await apiFetch(`${API_BASE}/api/auth/me`);
   return asJson<AuthedUser>(res);
 }
 
@@ -131,9 +153,8 @@ export async function updateProfile(
     cefrLevel: string;
   }>,
 ): Promise<AuthedUser> {
-  const res = await fetch(`${API_BASE}/api/auth/profile`, {
+  const res = await apiFetch(`${API_BASE}/api/auth/profile`, {
     method: "PATCH",
-    headers: authHeaders(),
     body: JSON.stringify(data),
   });
   return asJson<AuthedUser>(res);

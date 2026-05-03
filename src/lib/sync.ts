@@ -1,15 +1,8 @@
 import type { Lesson, Progress, SrsCard } from "../data/db";
 import { db } from "../data/db";
-import { getToken } from "./auth";
+import { apiFetch, getToken } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
-
-function authHeaders(token: string): Record<string, string> {
-  return {
-    "content-type": "application/json",
-    authorization: `Bearer ${token}`,
-  };
-}
 
 /**
  * Push local Dexie state up to the server. No-ops if offline or unauthenticated.
@@ -27,18 +20,16 @@ export async function syncToServer(): Promise<void> {
     ]);
 
     if (progress) {
-      const res = await fetch(`${API_BASE}/api/sync/progress`, {
+      const res = await apiFetch(`${API_BASE}/api/sync/progress`, {
         method: "POST",
-        headers: authHeaders(token),
         body: JSON.stringify(progress),
       });
       if (!res.ok) console.warn("syncToServer: progress failed", res.status);
     }
 
     if (cards.length > 0) {
-      const res = await fetch(`${API_BASE}/api/sync/cards`, {
+      const res = await apiFetch(`${API_BASE}/api/sync/cards`, {
         method: "POST",
-        headers: authHeaders(token),
         body: JSON.stringify({ cards }),
       });
       if (!res.ok) console.warn("syncToServer: cards failed", res.status);
@@ -58,9 +49,7 @@ export async function pullFromServer(): Promise<void> {
   if (!token) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/sync/pull`, {
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch(`${API_BASE}/api/sync/pull`);
     if (!res.ok) {
       console.warn("pullFromServer failed", res.status);
       return;

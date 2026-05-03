@@ -1,4 +1,4 @@
-import { authHeaders } from "./auth";
+import { apiFetch } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -17,9 +17,7 @@ export interface UsageToday {
 }
 
 export async function fetchUsageToday(): Promise<UsageToday> {
-  const res = await fetch(`${API_BASE}/api/usage/today`, {
-    headers: authHeaders(),
-  });
+  const res = await apiFetch(`${API_BASE}/api/usage/today`);
   if (!res.ok) throw new Error("Failed to fetch usage");
   return (await res.json()) as UsageToday;
 }

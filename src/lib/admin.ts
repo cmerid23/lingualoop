@@ -1,4 +1,4 @@
-import { authHeaders } from "./auth";
+import { apiFetch } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -33,7 +33,7 @@ export interface AdminStats {
 }
 
 export async function fetchAdminStats(): Promise<AdminStats> {
-  const res = await fetch(`${API_BASE}/api/admin/stats`, { headers: authHeaders() });
+  const res = await apiFetch(`${API_BASE}/api/admin/stats`);
   return asJson<AdminStats>(res);
 }
 
@@ -78,9 +78,7 @@ export async function fetchAdminUsers(q: UsersQuery = {}): Promise<AdminUserList
   if (q.plan) params.set("plan", q.plan);
   if (q.sort) params.set("sort", q.sort);
   if (q.order) params.set("order", q.order);
-  const res = await fetch(`${API_BASE}/api/admin/users?${params.toString()}`, {
-    headers: authHeaders(),
-  });
+  const res = await apiFetch(`${API_BASE}/api/admin/users?${params.toString()}`);
   return asJson<AdminUserListResponse>(res);
 }
 
@@ -125,7 +123,7 @@ export interface AdminUserDetailResponse {
 }
 
 export async function fetchAdminUser(id: string): Promise<AdminUserDetailResponse> {
-  const res = await fetch(`${API_BASE}/api/admin/users/${id}`, { headers: authHeaders() });
+  const res = await apiFetch(`${API_BASE}/api/admin/users/${id}`);
   return asJson<AdminUserDetailResponse>(res);
 }
 
@@ -133,18 +131,16 @@ export async function patchAdminUser(
   id: string,
   data: Partial<{ role: string; subscriptionPlan: string; subscriptionStatus: string }>,
 ): Promise<AdminUserDetail> {
-  const res = await fetch(`${API_BASE}/api/admin/users/${id}`, {
+  const res = await apiFetch(`${API_BASE}/api/admin/users/${id}`, {
     method: "PATCH",
-    headers: authHeaders(),
     body: JSON.stringify(data),
   });
   return asJson<AdminUserDetail>(res);
 }
 
 export async function deleteAdminUser(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/admin/users/${id}`, {
+  const res = await apiFetch(`${API_BASE}/api/admin/users/${id}`, {
     method: "DELETE",
-    headers: authHeaders(),
   });
   await asJson<{ ok: true }>(res);
 }
@@ -178,9 +174,8 @@ export async function fetchAdminSubscriptions(opts: {
   if (opts.page) params.set("page", String(opts.page));
   if (opts.limit) params.set("limit", String(opts.limit));
   if (opts.status) params.set("status", opts.status);
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/api/admin/subscriptions?${params.toString()}`,
-    { headers: authHeaders() },
   );
   return asJson<AdminSubscriptionsResponse>(res);
 }
@@ -194,6 +189,6 @@ export interface MonthlyRevenue {
   total: number;
 }
 export async function fetchAdminRevenue(): Promise<{ months: MonthlyRevenue[] }> {
-  const res = await fetch(`${API_BASE}/api/admin/revenue`, { headers: authHeaders() });
+  const res = await apiFetch(`${API_BASE}/api/admin/revenue`);
   return asJson<{ months: MonthlyRevenue[] }>(res);
 }

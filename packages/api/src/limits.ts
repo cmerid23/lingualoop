@@ -7,14 +7,14 @@
  */
 export const PLAN_LIMITS = {
   free: {
-    tutorMessagesPerDay: 5,
-    lessonsGeneratedPerDay: 3,
-    dailyMinutes: 10,
+    tutorMessagesPerDay: 10,
+    lessonsGeneratedPerDay: 5,
+    dailyMinutes: 15,
   },
   pro: {
-    tutorMessagesPerDay: 100,
-    lessonsGeneratedPerDay: 20,
-    dailyMinutes: 60,
+    tutorMessagesPerDay: 250,
+    lessonsGeneratedPerDay: 50,
+    dailyMinutes: 120,
   },
   premium: {
     tutorMessagesPerDay: -1,

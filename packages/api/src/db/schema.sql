@@ -122,6 +122,14 @@ CREATE TABLE IF NOT EXISTS daily_usage (
 );
 CREATE INDEX IF NOT EXISTS idx_daily_usage_user_date ON daily_usage(user_id, date);
 
+-- ─── waitlist (Stripe stub) ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS waitlist (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  plan TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ─── srs_cards (existing) ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS srs_cards (
   id TEXT NOT NULL,

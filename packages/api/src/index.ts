@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   type AuthedRequest,
@@ -30,7 +31,11 @@ const __dirname = path.dirname(__filename);
 // Env
 // ---------------------------------------------------------------------------
 const PORT = Number(process.env.PORT) || 3001;
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const FRONTEND_ORIGIN =
+  process.env.FRONTEND_ORIGIN ??
+  (process.env.NODE_ENV === "production"
+    ? "https://lingualoop-production.up.railway.app"
+    : "http://localhost:5173");
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -42,6 +47,44 @@ if (!JWT_SECRET) {
 }
 
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+// ---------------------------------------------------------------------------
+// Auth rate limiters — protect against brute force + abuse on public auth
+// endpoints. Behind a shared trust proxy (Railway) so the limiter sees the
+// real client IP rather than the load balancer's.
+// ---------------------------------------------------------------------------
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "too_many_attempts",
+    message: "Too many login attempts. Try again in 15 minutes.",
+  },
+});
+
+const otpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "too_many_otp_requests",
+    message: "Too many OTP requests. Try again in 1 hour.",
+  },
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "too_many_registrations",
+    message: "Too many registrations from this IP.",
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -239,6 +282,9 @@ function rowToProgress(row: any) {
 // App
 // ---------------------------------------------------------------------------
 const app = express();
+// Railway sits behind a load balancer; trust the first proxy hop so
+// express-rate-limit sees the real client IP instead of 127.0.0.1.
+app.set("trust proxy", 1);
 app.use(cors({ origin: FRONTEND_ORIGIN }));
 app.use(express.json({ limit: "1mb" }));
 
@@ -391,9 +437,31 @@ app.get(
 );
 
 // ---------------------------------------------------------------------------
+// Waitlist (Stripe stub) — capture interest while payment integration ships.
+// ---------------------------------------------------------------------------
+app.post("/api/waitlist", requireDb, async (req: Request, res: Response) => {
+  try {
+    const { email, plan } = req.body ?? {};
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "Invalid email" });
+    }
+    await pool!.query(
+      `INSERT INTO waitlist (email, plan)
+       VALUES ($1, $2)
+       ON CONFLICT (email) DO UPDATE SET plan = EXCLUDED.plan`,
+      [email.toLowerCase(), typeof plan === "string" ? plan : null],
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("/api/waitlist failed", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
-app.post("/api/auth/register", requireDb, async (req: Request, res: Response) => {
+app.post("/api/auth/register", registerLimiter, requireDb, async (req: Request, res: Response) => {
   try {
     const { email, password, fullName, phone } = req.body ?? {};
     if (!isValidEmail(email)) {
@@ -443,7 +511,7 @@ app.post("/api/auth/register", requireDb, async (req: Request, res: Response) =>
   }
 });
 
-app.post("/api/auth/login", requireDb, async (req: Request, res: Response) => {
+app.post("/api/auth/login", loginLimiter, requireDb, async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body ?? {};
     if (typeof email !== "string" || typeof password !== "string") {
@@ -481,7 +549,7 @@ app.post("/api/auth/login", requireDb, async (req: Request, res: Response) => {
   }
 });
 
-app.post("/api/auth/send-otp", requireDb, async (req: Request, res: Response) => {
+app.post("/api/auth/send-otp", otpLimiter, requireDb, async (req: Request, res: Response) => {
   try {
     const { identifier, type } = req.body ?? {};
     if (typeof identifier !== "string" || identifier.length === 0) {
@@ -496,9 +564,14 @@ app.post("/api/auth/send-otp", requireDb, async (req: Request, res: Response) =>
       `INSERT INTO otp_codes (identifier, code, type, expires_at) VALUES ($1, $2, $3, $4)`,
       [identifier, code, type, expiresAt],
     );
-    console.log(`[OTP] ${type} ${identifier} → ${code} (expires ${expiresAt.toISOString()})`);
-    // TODO: replace with real SMS/email provider before launch.
-    res.json({ success: true, code });
+    // TODO: integrate Resend/Twilio for real delivery
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[DEV OTP]", identifier, code);
+    }
+    res.json({
+      success: true,
+      message: "Code sent. Check your email or phone.",
+    });
   } catch (err) {
     console.error("/api/auth/send-otp failed", err);
     res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });

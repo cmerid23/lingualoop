@@ -6,7 +6,7 @@
  * are gated by per-plan daily quotas, so we send the bearer token and
  * surface 429 responses with their structured body so callers can react.
  */
-import { authHeaders } from "./auth";
+import { apiFetch } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -46,9 +46,8 @@ export class ApiError extends Error {
 }
 
 async function postJson<T>(path: string, payload: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await apiFetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) {

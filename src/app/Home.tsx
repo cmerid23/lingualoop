@@ -67,7 +67,7 @@ export function Home() {
         : null;
 
   return (
-    <AppShell title={`Welcome back 👋`}>
+    <AppShell title={`Good morning, ${user?.fullName?.split(" ")[0] ?? "there"} 👋`}>
       <div className="flex flex-col gap-7 px-6 py-8 lg:px-9">
         {/* ── Hero pair card ── */}
         <div
