@@ -3,19 +3,36 @@ import Stripe from "stripe";
 const SECRET = process.env.STRIPE_SECRET_KEY ?? "";
 
 /**
- * Stripe SDK client. Pinned to a specific API version so future Stripe
- * upgrades don't break the integration silently.
- *
- * If STRIPE_SECRET_KEY is unset (e.g. Railway env not configured yet),
- * the client still instantiates but every API call fails with a clear
- * error — the server still boots, only Stripe routes are degraded.
+ * Lazy-initialised Stripe SDK client. The Stripe constructor throws on an
+ * empty key, so eager init at module load would crash the entire API on
+ * any deploy that hasn't set STRIPE_SECRET_KEY yet. Routes call getStripe()
+ * after passing the stripeIsConfigured() guard, so the throw only ever
+ * surfaces inside a request handler — which then 503s gracefully.
  */
-// Pinned to the API version the installed SDK was generated against. Bump
-// here in lockstep with `stripe` package upgrades; the SDK type system
-// will surface mismatches at typecheck time.
-export const stripe = new Stripe(SECRET, {
-  apiVersion: "2025-02-24.acacia",
-  typescript: true,
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (_stripe) return _stripe;
+  if (!SECRET) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+  _stripe = new Stripe(SECRET, {
+    // Pinned to the API version the installed SDK was generated against.
+    // Bump in lockstep with the `stripe` package; typecheck surfaces drift.
+    apiVersion: "2025-02-24.acacia",
+    typescript: true,
+  });
+  return _stripe;
+}
+
+/**
+ * Proxy that defers SDK instantiation until the first property access.
+ * Lets routes keep using `stripe.checkout.sessions.create(...)` etc. without
+ * sprinkling `getStripe()` calls everywhere.
+ */
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getStripe(), prop, receiver);
+  },
 });
 
 export const STRIPE_PRICES = {
