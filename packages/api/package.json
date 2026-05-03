@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed-curriculum": "tsx src/scripts/seedCurriculum.ts",
     "add-dialogues": "tsx src/scripts/addDialogues.ts",
-    "make-admin": "tsx src/scripts/makeAdmin.ts"
+    "make-admin": "tsx src/scripts/makeAdmin.ts",
+    "count-dialogues": "tsx src/scripts/countDialogues.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
   Zap,
   Shield,
+  LogOut,
 } from "lucide-react";
 import { useProgressStore } from "../../store/progressStore";
 import { useAuthStore } from "../../store/authStore";
@@ -97,6 +98,7 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
   const streak = useProgressStore((s) => s.progress.streakDays);
   const xp = useProgressStore((s) => s.progress.xp);
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const { pathname } = useLocation();
   const [tutorUsage, setTutorUsage] = useState<UsageBucket | null>(null);
 
@@ -161,6 +163,14 @@ export function AppShell({ children, title, bare = false }: AppShellProps) {
             label="Settings"
             icon={<SettingsIcon className="h-[22px] w-[22px]" />}
           />
+          <button
+            onClick={logout}
+            title="Sign out"
+            aria-label="Sign out"
+            className="flex h-[52px] w-[52px] items-center justify-center rounded-2xl text-white/35 transition hover:bg-white/[0.07] hover:text-coral"
+          >
+            <LogOut className="h-[22px] w-[22px]" />
+          </button>
         </div>
       </nav>
 

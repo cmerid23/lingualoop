@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
 import {
   LANGUAGES,
@@ -7,12 +8,15 @@ import {
   type LangCode,
 } from "../data/languages";
 import { useSettingsStore } from "../store/settingsStore";
+import { useAuthStore } from "../store/authStore";
 import { db } from "../data/db";
 
 export function SettingsPage() {
   const navigate = useNavigate();
   const settings = useSettingsStore((s) => s.settings);
   const save = useSettingsStore((s) => s.save);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   if (!settings) return null;
   const cur = settings;
@@ -133,6 +137,45 @@ export function SettingsPage() {
             );
           })}
         </div>
+
+        {/* ── Account ── */}
+        {user && (
+          <div className="card mb-4">
+            <div className="card-label">Account</div>
+            <div className="mt-2 flex items-center gap-3">
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white"
+                style={{
+                  background: "linear-gradient(135deg, var(--teal), var(--violet))",
+                }}
+              >
+                <span className="text-sm font-bold">
+                  {(user.fullName?.[0] ?? user.email[0] ?? "U").toUpperCase()}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-display text-base font-semibold">
+                  {user.fullName ?? user.email}
+                </div>
+                <div className="truncate text-xs font-light text-ink-3">
+                  {user.email}
+                  {user.role === "admin" && (
+                    <span className="ml-2 rounded-full bg-violet/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet">
+                      Admin
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="btn-ghost mt-4 w-full"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </button>
+          </div>
+        )}
 
         {/* ── Reset ── */}
         <div className="card">

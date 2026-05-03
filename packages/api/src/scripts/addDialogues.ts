@@ -109,7 +109,8 @@ async function addDialogueTo(row: LessonRow): Promise<{ ok: boolean; reason?: st
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 800,
+    // 1500 covers Geʽez/Arabic dialogues with translit on every turn.
+    max_tokens: 1500,
     system: SYSTEM,
     messages: [
       {
@@ -125,7 +126,10 @@ async function addDialogueTo(row: LessonRow): Promise<{ ok: boolean; reason?: st
     ],
   });
   const block = response.content.find((b) => b.type === "text");
-  const raw = block && block.type === "text" ? block.text : "";
+  let raw = block && block.type === "text" ? block.text : "";
+  // Defensive: if Claude wraps the JSON in fences despite the system prompt,
+  // strip them before parsing.
+  raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
 
   let parsed: ParsedDialogue;
   try {
